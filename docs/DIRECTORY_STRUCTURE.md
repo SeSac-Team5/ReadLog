@@ -16,6 +16,7 @@ readlog/
 ├── docs/
 │   ├── requirements_and_flowchart.md      # 전체 화면 요구사항 원본
 │   ├── mainpage_and_reading_progress_spec.md  # 메인홈/진도입력 추가 스펙
+│   ├── dev-environment.md                 # 개발 환경 가이드 (라이브러리/iOS 서명/Claude Code 워크플로우)
 │   ├── DIRECTORY_STRUCTURE.md             # 이 문서
 │   ├── figma-export/
 │   │   └── App.tsx                        # Figma 화면설계서 뷰어 (참고용, RN 코드 아님)
