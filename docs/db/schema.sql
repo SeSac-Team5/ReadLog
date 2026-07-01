@@ -133,3 +133,29 @@ CREATE INDEX idx_ul_user ON user_library(user_id);
 CREATE INDEX idx_ul_book ON user_library(book_id);
 CREATE INDEX idx_gp_group ON reading_progress(group_id);
 CREATE INDEX idx_gc_group ON group_comments(group_id);
+
+-- ─────────────────────────────────────────────
+-- V2.1 additions (팀 결정 반영 — CLAUDE.md §8)
+-- ─────────────────────────────────────────────
+
+-- 1) WISH 상태는 기존 user_library.status ENUM에 이미 존재 → 스키마 변경 불필요, 사용 확정만 하면 됨
+
+-- 2) 개인 독서 진도 타임라인 (독서 진도 입력 화면의 "이전 진도 기록 리스트")
+CREATE TABLE reading_progress_logs(
+ id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT 'PK',
+ library_id BIGINT NOT NULL COMMENT 'user_library.id 참조',
+ page INT COMMENT '현재 페이지 (숫자 입력 방식일 때)',
+ percent FLOAT CHECK(percent>=0 AND percent<=100) COMMENT '진행률 % (슬라이더 입력 방식일 때)',
+ memo VARCHAR(300) COMMENT '선택 메모',
+ recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '기록 시각 (자동 저장)',
+ FOREIGN KEY(library_id) REFERENCES user_library(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='개인 독서 진도 기록 타임라인';
+CREATE INDEX idx_rpl_library ON reading_progress_logs(library_id);
+
+-- 3) sns_stickers 확장: 이모지 스티커 / 진도 시각화 오버레이 / 코멘트 스티커를 한 테이블에서 구분
+ALTER TABLE sns_stickers
+  ADD COLUMN type ENUM('emoji','comment','progress_ring','progress_bar','progress_badge')
+    NOT NULL DEFAULT 'emoji' COMMENT '스티커 종류',
+  ADD COLUMN content VARCHAR(300) NULL COMMENT '코멘트 텍스트 또는 배지 문구 (emoji 타입일 때는 emoji 컬럼 사용)',
+  ADD COLUMN visible BOOLEAN NOT NULL DEFAULT TRUE COMMENT '오버레이 노출 토글 (끄기 가능)';
+

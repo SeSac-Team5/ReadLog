@@ -104,19 +104,25 @@ module: auth | reading-plan | reading-group | home | shared
 - **디자인 토큰** (전 모듈 공통, 임의 색상 사용 금지):
   - 딥그린 `#2D4A3E` / 베이지(밝음) `#FDFBF4` / 베이지(톤다운) `#EDE7D8` / 완독 강조 `green-500`
 
-## 8. 아직 정해지지 않은 것 / 스키마와 기획의 충돌 (작업 전 확인)
+## 8. 확정된 결정 사항 (스키마 V2.1) / 남은 미결 사항
 
-`docs/db/schema.sql` (V2) 반영 완료. 스키마 기준으로 각 모듈 SKILL.md의 "DB 테이블" 섹션을 갱신했다. 스키마를 실제로 보니 기존 기획 문서와 아래 3가지가 어긋난다 — **코드 작성 전 팀 확인 필요**:
+`docs/db/schema.sql` V2 검토 중 발견된 3가지 충돌을 팀에서 아래와 같이 확정했다. 스키마는 **V2.1**로 갱신(`docs/db/schema.sql` 하단 "V2.1 additions" 참고)했고, 각 모듈 SKILL.md도 반영했다.
 
-1. **`user_library.status`에 `WISH`가 존재** — `edit-prompt.md` §6에서는 "읽는 중/완독 2단계만 사용, 읽고 싶다 단계 없음"으로 확정했는데 스키마는 `WISH|READING|COMPLETED` 3단계다. 스키마를 유지하고 프론트에서 WISH를 안 쓰기로 할지, 기획대로 스키마에서 WISH를 뺄지 결정 필요. (B 담당)
-2. **개인 독서 진도 타임라인 테이블이 없다** — `mainpage_and_reading_progress_spec.md`의 "독서 진도 입력 화면"은 "이전 진도 기록 리스트(타임라인)"을 요구하는데, 스키마에는 `user_library.current_page`(최신 값 1개)만 있고 기록 히스토리 테이블이 없다. `bookmarks` 테이블(제목/페이지/메모)은 노트·인용 저장용이라 용도가 다르다. 타임라인이 꼭 필요하면 신규 테이블(예: `reading_progress_logs`)을 추가 제안해야 한다. (B 담당, 스키마 변경은 Alembic 마이그레이션으로 별도 PR)
-3. **`sns_stickers`에 진도 오버레이 관련 컬럼이 없다** — SNS 공유 화면의 "진도 시각화 오버레이(신규)" 요구사항(원형 게이지/진행 바/텍스트 배지, 노출 토글)을 저장하려면 현재 컬럼(emoji, x, y, scale, rotation)만으로는 스티커 종류(이모지 vs 진도오버레이)와 토글 상태를 구분할 수 없다. `type` 컬럼과 `visible` 플래그 추가가 필요해 보인다. (B 담당)
+1. **`WISH` 상태를 사용한다.** `user_library.status`는 스키마 그대로 `WISH|READING|COMPLETED` 3단계 유지. (~~edit-prompt.md §6의 "2단계만 사용" 결정은 이 문서로 대체된다~~ — B 담당은 책 상세/등록 화면에 "읽고 싶다" 상태 선택 옵션을 추가해야 함)
+2. **개인 독서 진도 타임라인 테이블을 신규 추가한다.** `reading_progress_logs(id, library_id, page, percent, memo, recorded_at)` — `user_library.id`를 참조하며 진도 입력 화면에서 "저장" 시마다 한 행씩 쌓인다. 독서 진도 입력 화면의 "이전 진도 기록 리스트(타임라인)"는 이 테이블을 조회해서 구현.
+3. **`sns_stickers`에 컬럼을 추가한다.** `type ENUM('emoji','comment','progress_ring','progress_bar','progress_badge')`, `content VARCHAR(300)`(코멘트/배지 텍스트), `visible BOOLEAN`(노출 토글). 이모지는 기존 `emoji` 컬럼을 계속 쓰고, 코멘트·진도오버레이는 `content`를 사용.
 
-그 외 확인된/해소된 사항:
-- ~~그룹 도서 진도 단위: 페이지 vs %~~ → **해소됨**. `reading_progress` 테이블이 `chapter`, `page`, `progress(%)`를 모두 저장하므로 둘 다 지원. 프론트에서 어느 쪽을 기본 입력 UI로 보여줄지만 정하면 됨. (C 담당)
-- `users.is_deleted`(soft delete) 존재 → 회원탈퇴는 실제 row 삭제가 아니라 이 플래그 처리로 구현 (영구 삭제 금지 원칙과도 부합). (A 담당)
-- `reading_groups.invite_code`(상시 코드)와 `group_invites`(만료/1회성 코드) 두 종류가 공존 — 의도된 설계로 보이나 두 초대 방식의 UX 차이를 초대 화면 설계 시 명확히 구분할 것. (C 담당)
+### 신규 요구사항 — SNS 공유: 코멘트도 스티커로 추가
+- SNS 공유 화면에서 사진 위에 자유롭게 배치 가능한 "코멘트 스티커"를 추가로 지원한다 (기존의 하단 고정 코멘트 입력창과는 별개 기능).
+- 저장은 `sns_stickers`에 `type='comment'`, 텍스트는 `content` 컬럼에 저장. 위치/크기/회전은 기존 `x, y, scale, rotation` 컬럼을 그대로 재사용(이모지 스티커와 동일한 드래그 UX).
+- 진도 시각화 오버레이(원형게이지/진행바/배지)와 마찬가지로 `visible` 토글로 켜고 끌 수 있어야 한다.
+- 우선순위: 상 (B 담당, SNS 공유 화면에 상세 컴포넌트로 구현)
+
+### 남은 미결 사항
 - SNS 공유 화면 빈 상태 CTA 도착 화면 (모임 목록 vs 모임 개설) — 여전히 미결.
+- `users.is_deleted`(soft delete) 존재 → 회원탈퇴는 실제 row 삭제가 아니라 이 플래그 처리로 구현 (영구 삭제 금지 원칙과도 부합). (A 담당, 계속 유효)
+- `reading_groups.invite_code`(상시 코드)와 `group_invites`(만료/1회성 코드) 두 종류가 공존 — 초대 화면 설계 시 명확히 구분할 것. (C 담당, 계속 유효)
+- `reading_progress`(그룹)는 `page`+`progress(%)`를 모두 저장, `user_library`/`reading_progress_logs`(개인)는 페이지+% 모두 지원 가능 — 두 모듈이 기본으로 어떤 입력 UI(숫자 vs 슬라이더)를 보여줄지는 각 담당이 자율 결정.
 
 ## 9. Claude에게 주는 전역 지시사항
 
