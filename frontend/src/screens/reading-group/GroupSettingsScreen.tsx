@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Alert, ScrollView, StyleSheet, Switch, Text,
+  Alert, ScrollView, StyleSheet, Text,
   TextInput, TouchableOpacity, View,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -27,14 +27,13 @@ export default function GroupSettingsScreen({ navigation, route }: Props) {
   const isOwner = myRole === 'OWNER';
 
   const [name, setName] = useState(group?.name ?? '');
-  const [isPublic, setIsPublic] = useState(group?.is_public ?? true);
   const [saving, setSaving] = useState(false);
 
   async function handleSave() {
     if (!name.trim()) { Alert.alert('모임명을 입력해주세요.'); return; }
     setSaving(true);
     try {
-      await api.updateGroup(groupId, { name: name.trim(), is_public: isPublic });
+      await api.updateGroup(groupId, { name: name.trim() });
       Alert.alert('저장되었습니다.');
     } catch {
       Alert.alert('저장에 실패했습니다.');
@@ -126,25 +125,13 @@ export default function GroupSettingsScreen({ navigation, route }: Props) {
       {/* 기본 정보 */}
       <Text style={styles.sectionLabel}>기본 정보</Text>
       <View style={styles.card}>
-        <View style={styles.cardRow}>
+        <View style={[styles.cardRow, { borderBottomWidth: 0 }]}>
           <Text style={styles.rowLabel}>모임명</Text>
           <TextInput
             style={styles.rowInput}
             value={name}
             onChangeText={setName}
             maxLength={100}
-          />
-        </View>
-        <View style={[styles.cardRow, { borderBottomWidth: 0 }]}>
-          <View>
-            <Text style={styles.rowLabel}>공개 여부</Text>
-            <Text style={styles.rowSub}>{isPublic ? '공개' : '비공개'}</Text>
-          </View>
-          <Switch
-            value={isPublic}
-            onValueChange={setIsPublic}
-            thumbColor={COLORS.beigeLight}
-            trackColor={{ true: COLORS.deepGreen, false: '#DDD7CB' }}
           />
         </View>
       </View>
@@ -220,7 +207,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.06)',
   },
   rowLabel: { fontSize: 14, color: '#1C1A16' },
-  rowSub: { fontSize: 12, color: '#9E9E8A', marginTop: 2 },
   rowInput: {
     fontSize: 14, color: '#1C1A16', textAlign: 'right',
     flex: 1, marginLeft: 12,

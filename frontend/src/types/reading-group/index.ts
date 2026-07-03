@@ -6,7 +6,6 @@ export interface ReadingGroup {
   book_id: number | null;
   name: string;
   description: string | null;
-  is_public: boolean;
   max_member: number;
   invite_code: string;
   start_date: string | null;
@@ -80,7 +79,6 @@ export interface CreateGroupPayload {
   book_id?: number;
   name: string;
   description?: string;
-  is_public: boolean;
   max_member: number;
   start_date?: string;
   end_date?: string;
@@ -89,7 +87,6 @@ export interface CreateGroupPayload {
 export interface UpdateGroupPayload {
   name?: string;
   description?: string;
-  is_public?: boolean;
   max_member?: number;
   start_date?: string;
   end_date?: string;

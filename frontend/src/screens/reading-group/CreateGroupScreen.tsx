@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Alert, Platform, ScrollView, StyleSheet, Switch, Text,
+  Alert, Platform, ScrollView, StyleSheet, Text,
   TouchableOpacity, View,
 } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -28,7 +28,6 @@ type PickedBook = { book_id: number; title: string; author: string };
 export default function CreateGroupScreen({ navigation }: Props) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [isPublic, setIsPublic] = useState(true);
   const [maxMember, setMaxMember] = useState(8);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -92,7 +91,6 @@ export default function CreateGroupScreen({ navigation }: Props) {
       const group = await api.createGroup({
         name: name.trim(),
         description: description.trim() || undefined,
-        is_public: isPublic,
         max_member: maxMember,
         start_date: startDate || undefined,
         end_date: endDate || undefined,
@@ -130,21 +128,6 @@ export default function CreateGroupScreen({ navigation }: Props) {
           onChangeText={setDescription}
           multiline
           maxLength={500}
-        />
-      </View>
-
-      <View style={styles.toggleRow}>
-        <View>
-          <Text style={styles.toggleLabel}>공개 여부</Text>
-          <Text style={styles.toggleSub}>
-            {isPublic ? '누구나 참가 신청 가능' : '초대 코드로만 참가 가능'}
-          </Text>
-        </View>
-        <Switch
-          value={isPublic}
-          onValueChange={setIsPublic}
-          thumbColor={COLORS.beigeLight}
-          trackColor={{ true: COLORS.deepGreen, false: '#DDD7CB' }}
         />
       </View>
 
@@ -260,16 +243,6 @@ const styles = StyleSheet.create({
   },
   dateBtnText: { fontSize: 14, color: '#1C1A16' },
   datePlaceholder: { color: '#9E9E8A' },
-  toggleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.08)',
-  },
-  toggleLabel: { fontSize: 14, fontWeight: '500', color: '#1C1A16' },
-  toggleSub: { fontSize: 12, color: '#9E9E8A', marginTop: 2 },
   chipRow: { flexDirection: 'row', gap: 8 },
   chip: {
     flex: 1,

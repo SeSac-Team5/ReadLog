@@ -19,7 +19,11 @@ export function useKeyboardHeight(): number {
 
     const show = Keyboard.addListener('keyboardDidShow', e => {
       const windowH = Dimensions.get('window').height;
-      setKbHeight(Math.max(0, windowH - e.endCoordinates.screenY));
+      const screenH = Dimensions.get('screen').height;
+      // screen - window 차이가 키보드 높이의 85% 이상이면
+      // adjustResize가 이미 윈도우를 줄인 것 → 이중 보정 방지
+      const alreadyAdjusted = (screenH - windowH) >= e.endCoordinates.height * 0.85;
+      setKbHeight(alreadyAdjusted ? 0 : Math.max(0, e.endCoordinates.height));
     });
     const hide = Keyboard.addListener('keyboardDidHide', () => setKbHeight(0));
 

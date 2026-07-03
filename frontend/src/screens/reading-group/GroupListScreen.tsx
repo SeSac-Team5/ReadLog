@@ -32,11 +32,6 @@ export default function GroupListScreen({ navigation }: Props) {
             ) : null}
           </View>
           <View style={{ alignItems: 'flex-end', gap: 4 }}>
-            <View style={[styles.badge, item.is_public ? styles.badgePublic : styles.badgePrivate]}>
-              <Text style={[styles.badgeText, item.is_public ? styles.badgeTextPublic : styles.badgeTextPrivate]}>
-                {item.is_public ? '공개' : '비공개'}
-              </Text>
-            </View>
             {daysLeft !== null && (
               <Text style={styles.daysLeft}>D{daysLeft >= 0 ? `-${daysLeft}` : `+${Math.abs(daysLeft)}`}</Text>
             )}
@@ -98,12 +93,6 @@ const styles = StyleSheet.create({
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
   groupName: { fontSize: 14, fontWeight: '600', color: '#1C1A16' },
   groupDesc: { fontSize: 12, color: '#9E9E8A', marginTop: 2 },
-  badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 },
-  badgePublic: { backgroundColor: '#DCFCE7' },
-  badgePrivate: { backgroundColor: '#F3F4F6' },
-  badgeText: { fontSize: 10 },
-  badgeTextPublic: { color: '#15803D' },
-  badgeTextPrivate: { color: '#4B5563' },
   daysLeft: { fontSize: 10, color: '#9E9E8A' },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   memberCount: { fontSize: 12, color: '#9E9E8A' },

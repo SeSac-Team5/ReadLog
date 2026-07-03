@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { COLORS } from '../../constants/theme';
 import type { GroupComment } from '../../types/reading-group';
 
@@ -13,6 +14,15 @@ export const EMOJI_PRESETS = ['🌿', '💭', '❤️', '👏', '😮'];
 
 export default function SpoilerComment({ comment, onReact, currentUserId }: Props) {
   const [revealed, setRevealed] = useState(false);
+  const overlayOpacity = useRef(new Animated.Value(1)).current;
+
+  function handleReveal() {
+    Animated.timing(overlayOpacity, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => setRevealed(true));
+  }
 
   const timeLabel = (() => {
     const diff = Date.now() - new Date(comment.created_at).getTime();
@@ -66,18 +76,19 @@ export default function SpoilerComment({ comment, onReact, currentUserId }: Prop
 
       {/* 본문 */}
       <View style={{ position: 'relative' }}>
-        <Text
-          style={[
-            styles.content,
-            comment.is_spoiler && !revealed && styles.contentBlurred,
-          ]}
-        >
+        <Text style={[styles.content, comment.is_spoiler && !revealed && styles.contentHidden]}>
           {comment.content}
         </Text>
         {comment.is_spoiler && !revealed && (
-          <TouchableOpacity style={styles.revealOverlay} onPress={() => setRevealed(true)}>
-            <Text style={styles.revealText}>탭하여 스포일러 보기</Text>
-          </TouchableOpacity>
+          <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: overlayOpacity }]}>
+            <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={handleReveal} activeOpacity={1}>
+              <BlurView style={StyleSheet.absoluteFillObject} intensity={70} tint="light" />
+              <View style={[StyleSheet.absoluteFillObject, styles.blurOverlay]} />
+              <View style={styles.revealOverlay}>
+                <Text style={styles.revealText}>탭하여 스포일러 보기</Text>
+              </View>
+            </TouchableOpacity>
+          </Animated.View>
         )}
       </View>
 
@@ -148,7 +159,8 @@ const styles = StyleSheet.create({
   },
   quoteText: { fontSize: 12, color: '#7A7060', fontStyle: 'italic' },
   content: { fontSize: 12, color: '#1C1A16', lineHeight: 20 },
-  contentBlurred: { opacity: 0.15 },
+  contentHidden: { color: COLORS.beigeLight },
+  blurOverlay: { backgroundColor: 'rgba(253,251,244,0.9)' },
   revealOverlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center', justifyContent: 'center',

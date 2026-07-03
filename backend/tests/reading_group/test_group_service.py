@@ -15,7 +15,7 @@ class TestCreateGroup:
     def test_creates_group_and_owner_member(self, db):
         data = MagicMock(
             book_id=1, name="테스트 모임", description=None,
-            is_public=True, max_member=8, start_date=None, end_date=None,
+            max_member=8, start_date=None, end_date=None,
         )
         db.flush = MagicMock()
         db.commit = MagicMock()

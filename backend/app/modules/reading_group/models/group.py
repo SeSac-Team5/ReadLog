@@ -21,7 +21,6 @@ class ReadingGroup(Base):
     book_id = Column(BigInteger, ForeignKey("books.id"), nullable=True)
     name = Column(String(100), nullable=False)
     description = Column(String(500))
-    is_public = Column(Boolean, default=True)
     max_member = Column(BigInteger, default=8)
     invite_code = Column(String(30), unique=True, nullable=False)
     start_date = Column(DateTime)

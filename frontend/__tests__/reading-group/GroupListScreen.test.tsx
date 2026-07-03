@@ -14,7 +14,7 @@ describe('GroupListScreen', () => {
       groups: [
         {
           id: 1, name: '한강 읽기 모임', description: null,
-          is_public: true, max_member: 8, member_count: 5,
+          max_member: 8, member_count: 5,
           invite_code: 'RDLG-0001',
           start_date: null, end_date: null, created_at: '',
           book_id: null, owner_id: 1,

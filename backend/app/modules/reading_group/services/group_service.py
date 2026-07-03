@@ -26,7 +26,6 @@ def create_group(db: Session, owner_id: int, data: GroupCreate) -> ReadingGroup:
         book_id=data.book_id,
         name=data.name,
         description=data.description,
-        is_public=data.is_public,
         max_member=data.max_member,
         invite_code=code,
         start_date=data.start_date,

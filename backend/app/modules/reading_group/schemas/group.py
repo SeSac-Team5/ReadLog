@@ -10,7 +10,6 @@ class GroupCreate(BaseModel):
     book_id: Optional[int] = None
     name: str = Field(..., max_length=100)
     description: Optional[str] = Field(None, max_length=500)
-    is_public: bool = True
     max_member: int = Field(8, ge=2, le=50)
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
@@ -19,7 +18,6 @@ class GroupCreate(BaseModel):
 class GroupUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
-    is_public: Optional[bool] = None
     max_member: Optional[int] = Field(None, ge=2, le=50)
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
@@ -31,7 +29,6 @@ class GroupResponse(BaseModel):
     book_id: Optional[int]
     name: str
     description: Optional[str]
-    is_public: bool
     max_member: int
     invite_code: str
     start_date: Optional[datetime]
