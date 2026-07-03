@@ -1,5 +1,5 @@
 import * as ImagePicker from "expo-image-picker";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -21,6 +21,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Circle, Text as SvgText } from "react-native-svg";
 
 import { addStickers, createSnsPost } from "../../api/reading-plan/sns";
+import { useLibrary } from "../../store/reading-plan/libraryStore";
 import type { UserLibraryItem } from "../../types/reading-plan/book";
 import type {
   CommentStickerBackground,
@@ -94,13 +95,44 @@ function stickerChipLabel(sticker: Sticker) {
   return "진도";
 }
 
+export default function SNSShareScreen({
+  navigation,
+  route,
+}: {
+  navigation: any;
+  route: { params: { libraryItemId: string } };
+}) {
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
+  const { items } = useLibrary();
+  const libraryItem = items.find((item) => item.id === route.params.libraryItemId) ?? null;
+
+  if (!libraryItem) {
+    return (
+      <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
+        <Text style={styles.notFoundText}>책 정보를 찾을 수 없어요</Text>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SNSShareScreenView
+      libraryItem={libraryItem}
+      onBack={() => navigation.goBack()}
+      onShared={() => navigation.goBack()}
+    />
+  );
+}
+
 interface SNSShareScreenProps {
   libraryItem: UserLibraryItem;
   onBack: () => void;
   onShared?: () => void;
 }
 
-export function SNSShareScreen({ libraryItem, onBack, onShared }: SNSShareScreenProps) {
+function SNSShareScreenView({ libraryItem, onBack, onShared }: SNSShareScreenProps) {
   const previewRef = useRef<View>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [photoUri, setPhotoUri] = useState<string | null>(null);
@@ -890,6 +922,13 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: COLORS.beigeLight,
+  },
+  notFoundText: {
+    flex: 1,
+    textAlign: "center",
+    textAlignVertical: "center",
+    color: COLORS.textMuted,
+    fontSize: 13,
   },
   header: {
     flexDirection: "row",

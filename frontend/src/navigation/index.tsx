@@ -17,6 +17,9 @@ import { MyPageScreen } from '../screens/auth/MyPageScreen';
 import { EditProfileScreen } from '../screens/auth/EditProfileScreen';
 import { ChangePasswordScreen } from '../screens/auth/ChangePasswordScreen';
 import { DeleteAccountScreen } from '../screens/auth/DeleteAccountScreen';
+import { FindIdScreen } from '../screens/auth/FindIdScreen';
+import { FindPasswordScreen } from '../screens/auth/FindPasswordScreen';
+import { NotificationSettingsScreen } from '../screens/auth/NotificationSettingsScreen';
 
 // reading-plan
 import BookSearchScreen from '../screens/reading-plan/BookSearchScreen';
@@ -49,7 +52,13 @@ const stackOptions = {
 
 // SOURCE auth 스크린들은 callback prop 방식이므로 React Navigation props를 변환하는 래퍼 사용
 function LoginWrapper({ navigation }: { navigation: any }) {
-  return <LoginScreen onNavigateSignUp={() => navigation.navigate('SignUp')} />;
+  return (
+    <LoginScreen
+      onNavigateSignUp={() => navigation.navigate('SignUp')}
+      onNavigateFindId={() => navigation.navigate('FindId')}
+      onNavigateFindPassword={() => navigation.navigate('FindPassword')}
+    />
+  );
 }
 
 function SignUpWrapper({ navigation }: { navigation: any }) {
@@ -61,12 +70,26 @@ function SignUpWrapper({ navigation }: { navigation: any }) {
   );
 }
 
+function FindIdWrapper({ navigation }: { navigation: any }) {
+  return <FindIdScreen onBack={() => navigation.goBack()} />;
+}
+
+function FindPasswordWrapper({ navigation }: { navigation: any }) {
+  return (
+    <FindPasswordScreen
+      onBack={() => navigation.goBack()}
+      onDone={() => navigation.navigate('Login')}
+    />
+  );
+}
+
 function MyPageWrapper({ navigation }: { navigation: any }) {
   return (
     <MyPageScreen
       onNavigateEditProfile={() => navigation.navigate('EditProfile')}
       onNavigateChangePassword={() => navigation.navigate('ChangePassword')}
       onNavigateDeleteAccount={() => navigation.navigate('DeleteAccount')}
+      onNavigateNotificationSettings={() => navigation.navigate('NotificationSettings')}
     />
   );
 }
@@ -81,6 +104,10 @@ function ChangePasswordWrapper({ navigation }: { navigation: any }) {
 
 function DeleteAccountWrapper({ navigation }: { navigation: any }) {
   return <DeleteAccountScreen onBack={() => navigation.goBack()} />;
+}
+
+function NotificationSettingsWrapper({ navigation }: { navigation: any }) {
+  return <NotificationSettingsScreen onBack={() => navigation.goBack()} />;
 }
 
 function HomeStack() {
@@ -126,6 +153,7 @@ function MyPageStack() {
       <Stack.Screen name="EditProfile" component={EditProfileWrapper} />
       <Stack.Screen name="ChangePassword" component={ChangePasswordWrapper} />
       <Stack.Screen name="DeleteAccount" component={DeleteAccountWrapper} />
+      <Stack.Screen name="NotificationSettings" component={NotificationSettingsWrapper} />
     </Stack.Navigator>
   );
 }
@@ -161,6 +189,8 @@ function RootNavigator() {
         <>
           <Stack.Screen name="Login" component={LoginWrapper} />
           <Stack.Screen name="SignUp" component={SignUpWrapper} />
+          <Stack.Screen name="FindId" component={FindIdWrapper} />
+          <Stack.Screen name="FindPassword" component={FindPasswordWrapper} />
         </>
       ) : (
         <Stack.Screen name="Main" component={MainTabs} />

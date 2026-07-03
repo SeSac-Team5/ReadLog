@@ -113,3 +113,63 @@ SQLAlchemy의 `Enum(SomePyEnum, native_enum=False)`는 **기본적으로 Python 
 - **1손가락 ↔ 2손가락 전환 시 점프 방지**: 핀치 중엔 위치(x, y)를 건드리지 않고 스케일/회전만 바꾸는데, 손가락 하나를 떼서 다시 드래그(이동)로 전환되는 순간 `PanResponder`의 `gesture.dx/dy`는 제스처 시작 시점(첫 손가락이 닿은 순간)부터 누적된 값이라 그대로 쓰면 위치가 홱 튄다. 그래서 2→1손가락 전환을 감지한 프레임에 `startPos`를 스티커의 현재 위치로, `dragOffsetRef`를 그 순간의 `gesture.dx/dy`로 다시 앵커링해서, 그 이후의 이동만 반영되도록 했다.
 - **버튼 + 제스처 병행**: 처음엔 확대/축소/회전 버튼을 지우고 제스처로만 대체했었는데, 사용자가 "제스처는 위화감 없지만 세밀 조정엔 버튼도 같이 있는 게 낫다"고 해서 **확대/축소/회전 버튼(15%/15도 단위)을 다시 살리고 두 손가락 제스처와 함께 제공**하는 걸로 바꿨다. 버튼은 값을 15%/15도씩 정확히 스텝 이동시키고, 제스처는 손끝 움직임에 맞춰 연속적으로 반영되는 식이라 서로 배타적이지 않고 같은 `updateSticker(id, { scale, rotation })` 경로를 공유한다. 숨기기/삭제는 원래부터 버튼 전용(토글/파괴적 동작이라 제스처로 매핑하기 애매함).
 - **한계/추후 개선 여지**: `gesture-handler`의 `PinchGestureHandler`/`RotationGestureHandler`처럼 velocity 기반 감쇠나 두 제스처의 정교한 동시 인식은 없다 — 순수 좌표 계산이라 다소 투박할 수 있음. 실제 기기에서 써보고 위화감이 크면 `gesture-handler` 도입 시점에 이 부분부터 교체하는 게 좋다.
+
+## develop 통합 — 로컬 실행을 위한 임시 auth 스텁 (2026-07-03)
+
+`feature/reading-plan/develop-integration` 브랜치에서 reading_plan을 develop에 얹었더니, `backend/main.py`가 시작하자마자 `import app.modules.auth.models.user`와 `from app.modules.auth.routers.auth_router import router`를 하는데 **auth 모듈(A 담당) 자체가 아직 develop에 없어서** 서버가 아예 못 떴다 (`ModuleNotFoundError: No module named 'app.modules.auth'`).
+
+로컬에서 계속 테스트해야 해서, `backend/app/modules/auth/` 밑에 **임시 스텁**을 만들어 import만 통과시켰다:
+- `models/user.py` — `docs/db/schema.sql`의 `users` 테이블 컬럼 그대로 매핑한 최소 `User` 모델 (로그인/인증 로직 없음).
+- `routers/auth_router.py` — 엔드포인트 없는 빈 `APIRouter(prefix="/auth")`.
+
+이 스텁 덕분에 `main.py` import는 통과하지만, `app.common.deps.get_current_user`(세션 쿠키 기반 진짜 인증)는 실제 로그인 엔드포인트가 없어서 항상 401이 난다. **reading_plan 라우터들은 이 실제 인증을 안 쓰고 자체 스텁(`app/modules/reading_plan/deps.py`의 `get_current_user_id`, `X-User-Id` 헤더)을 쓰기 때문에 reading_plan 기능 테스트엔 영향 없다.** reading_group 라우터는 진짜 `get_current_user`를 쓰므로 로그인 없이는 테스트 불가.
+
+**⚠ A 담당자의 진짜 auth 모듈이 develop에 올라오면 이 스텁은 반드시 삭제할 것** — `backend/app/modules/auth/**` 전체. 같은 이름(`User`)의 모델이 같은 `Base`에 두 번 등록되면 SQLAlchemy가 매퍼 충돌 에러를 낸다.
+
+### 프론트에도 같은 문제 — auth store/화면 임시 스텁
+
+백엔드와 똑같은 이유로 프론트도 안 떴다: `App.tsx`/`navigation/index.tsx`/`HomeScreen`/일부 reading-group 화면이 `frontend/src/store/auth/AuthContext`(진짜 로그인 상태 관리)와 `frontend/src/screens/auth/*` 6개 화면을 import하는데, 둘 다 develop에 없어서 `Unable to resolve module` 번들 에러가 났다.
+
+만든 것 (전부 "A 담당자 실제 구현 오면 삭제" 대상):
+- `frontend/src/store/auth/AuthContext.tsx` — `useAuth()`가 **항상 로그인된 가짜 유저**(`{ id: 1, nickname: "테스트유저" }`, `isRestoring: false`)를 반환하는 스텁. 진짜 로그인 화면(`Login`/`SignUp`)을 거치지 않고 바로 `MainTabs`(홈/서재/모임/마이페이지)로 들어가게 하기 위함 — 백엔드의 `get_current_user_id` 헤더 스텁(항상 user_id=1)과 같은 발상.
+- `frontend/src/screens/auth/{LoginScreen,SignUpScreen,MyPageScreen,EditProfileScreen,ChangePasswordScreen,DeleteAccountScreen}.tsx` — `navigation/index.tsx`가 로그인 여부와 무관하게 6개 파일을 전부 정적 import하기 때문에(마이페이지 탭 스택에 4개가 포함됨), 실제로는 거의 안 보이더라도 파일 자체는 있어야 번들이 됨. 전부 "OO 화면 준비 중" 텍스트만 있는 빈 화면.
+
+이 스텁들 덕분에 `npx expo export`가 1043 모듈로 정상 번들됨을 확인. **A의 실제 auth 모듈이 오면 `frontend/src/store/auth/`, `frontend/src/screens/auth/` 전체를 지우고 그 구현으로 교체할 것.**
+
+## 임시 auth 스텁 → 실제 auth 모듈(origin/YSE)로 교체 (2026-07-03)
+
+A 담당자의 실제 auth 구현이 `origin/YSE` 브랜치에 있었다. 이 브랜치도 `develop`/`hyunsang`처럼 공통 조상이 없는 완전히 별개 히스토리라(초기 스캐폴딩 때 각자 따로 만든 것으로 보임), 통째로 머지하지 않고 **auth 소유 경로만 골라서 이식**했다:
+- 백엔드: `backend/app/modules/auth/**` 전체(위의 임시 스텁을 지우고 교체) — models(`User`, `UserGenreInterest`)/schemas/services/routers.
+- 프론트: `frontend/src/store/auth/AuthContext.tsx`(진짜 세션 기반, 임시 스텁 교체), `frontend/src/screens/auth/*` 9개(기존 6개 교체 + `FindId`/`FindPassword`/`NotificationSettings` 3개 신규), `frontend/src/components/auth/*`, `frontend/src/hooks/auth/*`, `frontend/src/api/auth/*`, `frontend/src/types/auth/*`.
+
+### 실제로 겪은 문제와 고친 것
+1. **`users` 테이블 스키마 불일치**: 실제 `User` 모델은 회원탈퇴 시 `login_id`/`nickname`을 NULL로 비우는 소프트 딜리트 설계인데(재사용 가능하게), 기존 `docs/db/schema.sql`의 `users` 테이블은 두 컬럼 다 `NOT NULL`이었다. `V2.5 additions`로 `ALTER TABLE users MODIFY COLUMN login_id/nickname ... NULL` 추가.
+2. **관심 장르 테이블 누락**: `backend/app/modules/auth/models/genre_interest.py`(`UserGenreInterest`, 테이블명 `user_genre_interests`)가 필요로 하는 테이블이 스키마에 없어서 `V2.5 additions`에 `CREATE TABLE user_genre_interests` 추가.
+3. **`navigation/index.tsx` 프롭 불일치**: 실제 `LoginScreen`은 `onNavigateSignUp` 외에 `onNavigateFindId`/`onNavigateFindPassword`도 요구하고, 실제 `MyPageScreen`은 `onNavigateNotificationSettings`도 요구했다 — 임시 스텁 화면들은 이런 프롭이 없어서 안 드러났던 문제. `FindId`/`FindPassword`/`NotificationSettings` 3개 화면을 라우트로 새로 등록하고 각각의 Wrapper를 추가했다 (**공용 파일이라 팀 리뷰 필요**).
+4. **마이페이지 화면이 자체 TabBar를 또 렌더링하던 버그**: `MyPageScreen`이 원래(origin/YSE의 독립 실행형 설계에서) 화면 맨 밑에 직접 `<TabBar active="profile" onChangeTab={...} />`를 그리고 있었는데, 이 프로젝트는 이미 `MainTabs`의 `Tab.Navigator`가 하단 탭바를 한 번 그려주고 있어서 그대로 두면 탭바가 두 번 겹쳐 보였을 것. `MyPageScreen`에서 이 내부 TabBar 렌더링과 `onNavigateTab` prop을 제거함 (탭 전환은 이미 `Tab.Navigator` 자체가 처리).
+5. **`expo-notifications` 의존성 누락**: `frontend/src/hooks/auth/dailyReminder.ts`(알림 설정 화면이 씀)가 필요로 하는데 없어서 `npx expo install expo-notifications`로 SDK54 호환 버전 추가 — 새 네이티브 모듈이라 `expo prebuild --clean` 다시 돌리고 Xcode 재빌드 필요.
+
+### 하단 탭바(TabBar) — origin/YSE 디자인 + 실제 네비게이션 배선
+`frontend/src/components/common/TabBar.tsx`도 origin/YSE 버전을 쓰기로 했는데, YSE의 원본은 `{ active, onChangeTab }`이라는 수동 상태 기반 props였다 (React Navigation의 `tabBar` 렌더 프롭이 실제로 넘겨주는 `BottomTabBarProps`인 `{ state, navigation, ... }`가 아님 — YSE도 자체적인 수동 화면 전환 아키텍처로 만들어져 있었다). 그래서 **비주얼(lucide-react-native 아이콘, 4탭 구성, 색상 스타일)만 YSE 걸 가져오고, 실제 배선은 `state.index`/`navigation.navigate(routeName)` 기반으로 다시 짰다.**
+
+### 로그인 플로우가 실제로 동작하게 됨에 따른 변화
+지금까지 쓰던 "항상 로그인된 걸로 치는" 가짜 `AuthContext` 스텁이 사라지고 진짜 세션 기반으로 바뀌었다. 즉 **이제 앱을 열면 실제로 로그인 화면부터 시작한다** — 회원가입/로그인을 먼저 해야 내 서재 등 탭에 들어갈 수 있음 (이전처럼 스텁으로 바로 탭이 보이지 않음, 의도된 정상 동작).
+
+### ⚠ `expo-notifications` + 무료 Apple 개인 팀 조합에서 빌드 실패
+
+`expo-notifications`는 `app.json`의 `plugins`에 명시적으로 안 넣어도 설치만 되어 있으면 Expo 오토링킹이 자동으로 config plugin(`node_modules/expo-notifications/plugin/build/withNotificationsIOS.js`)을 적용해서, `ios/ReadLog/ReadLog.entitlements`에 `aps-environment`(Push Notifications) 항목을 무조건 추가한다 (이미 값이 있지 않은 이상 조건 없이 추가 — 로컬 알림만 쓰든 안 쓰든 상관없이). 무료(Personal Team) Apple ID는 Push Notifications capability를 지원 안 해서 "Cannot create a iOS App Development provisioning profile" 에러로 빌드 자체가 실패했다.
+
+**임시로 고친 것**: `ios/ReadLog/ReadLog.entitlements`에서 `aps-environment` 키를 직접 지웠다 (이 프로젝트는 서버발 푸시가 아니라 `dailyReminder.ts`의 로컬 알림만 쓰므로 이 entitlement가 애초에 필요 없음).
+
+**주의**: 이 파일은 `expo prebuild`가 다시 돌 때마다(새 네이티브 모듈 추가 등으로) 플러그인이 재생성하면서 `aps-environment`를 다시 끼워 넣는다. 앞으로 `expo prebuild --clean`을 또 돌릴 일이 있으면 **`ios/ReadLog/ReadLog.entitlements`에서 이 항목을 다시 지워야** 무료 Apple ID로 빌드 가능. (유료 Apple Developer Program 계정을 쓰게 되면 이 문제 자체가 없어짐.)
+
+### `app.json`의 `apiBaseUrl` IP가 안 바뀌는 것처럼 보이던 문제
+
+`app.json`의 `extra.apiBaseUrl`을 예전 IP(`192.168.38.69`)에서 맥의 실제 IP(`192.168.38.40`)로 고쳤는데, Metro를 재시작(`--clear` 포함)해도 폰 앱이 계속 예전 IP로 요청을 보내는 것처럼 보였다. 소스 전체(숨김 파일 포함)를 검색해도 예전 IP 문자열이 전혀 안 남아있어서 코드 문제는 아니었고, **Xcode에서 앱을 다시 빌드하니 해결됐다** — 즉 JS/설정 변경이 아니라, 기존에 설치돼 있던 앱 바이너리 자체가 오래된 상태였던 것으로 보인다 (dev client가 Metro에 붙어도 `Constants.expoConfig`가 앱 실행 시점 기준으로 고정되는 경우가 있는 듯).
+
+**교훈**: `app.json`(특히 `extra`, `plugins` 등 네이티브에 영향 줄 수 있는 필드)을 바꿨는데 Metro 재시작만으로 반영이 안 되면, JS 캐시 문제로 단정하지 말고 **Xcode에서 앱을 다시 빌드**해보는 걸 먼저 시도할 것.
+
+같은 문제를 파던 중 다음 두 가지도 같이 고쳐놨다 (부수적으로 발견한 진짜 버그라 유지):
+- `frontend/src/config.ts`의 fallback IP가 여전히 예전 값(`192.168.38.69`, `/api` 경로도 누락)이었던 걸 실제 IP로 수정.
+- `authApi.ts`가 `Constants.expoConfig.extra.apiBaseUrl`을 자체적으로 다시 읽던 걸 `config.ts`의 `API_BASE_URL`을 재사용하도록 통일 (같은 값을 두 곳에서 따로 계산하다 하나만 고쳐지는 사고 방지).
+- `authApi.ts`에 `ApiError`(상태코드 포함) 도입 — 아이디/닉네임 중복확인이 진짜 409(중복)일 때만 "이미 사용 중"으로 뜨고, 그 외 실패(네트워크 오류 등)는 실제 에러를 보여주도록 수정 (기존엔 `catch { setNicknameCheck('taken') }`처럼 모든 실패를 "중복"으로 오인시키던 버그가 있었음).

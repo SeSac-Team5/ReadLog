@@ -18,6 +18,8 @@ class Settings(BaseSettings):
 
     APP_ENV: str = "development"
 
+    ALADIN_API_KEY: str = ""  # reading_plan 모듈: 알라딘 도서 검색 API 키
+
     @property
     def DATABASE_URL(self) -> str:
         """async (aiomysql) — auth 모듈 및 비동기 엔진용"""

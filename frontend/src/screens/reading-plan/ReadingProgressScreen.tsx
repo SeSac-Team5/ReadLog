@@ -1,5 +1,5 @@
 import Slider from "@react-native-community/slider";
-import React, { useState } from "react";
+import React, { useLayoutEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -30,13 +30,44 @@ const COLORS = {
 
 type InputMethod = "page" | "percent";
 
+export default function ReadingProgressScreen({
+  navigation,
+  route,
+}: {
+  navigation: any;
+  route: { params: { libraryItemId: string } };
+}) {
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
+  const { items } = useLibrary();
+  const libraryItem = items.find((item) => item.id === route.params.libraryItemId) ?? null;
+
+  if (!libraryItem) {
+    return (
+      <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
+        <Text style={styles.notFoundText}>책 정보를 찾을 수 없어요</Text>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <ReadingProgressScreenView
+      libraryItem={libraryItem}
+      onBack={() => navigation.goBack()}
+      onSharePress={() => navigation.navigate("SNSShare", { libraryItemId: libraryItem.id })}
+    />
+  );
+}
+
 interface ReadingProgressScreenProps {
   libraryItem: UserLibraryItem;
   onBack: () => void;
   onSharePress?: () => void;
 }
 
-export function ReadingProgressScreen({
+function ReadingProgressScreenView({
   libraryItem,
   onBack,
   onSharePress,
@@ -258,6 +289,13 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: COLORS.beigeLight,
+  },
+  notFoundText: {
+    flex: 1,
+    textAlign: "center",
+    textAlignVertical: "center",
+    color: COLORS.textMuted,
+    fontSize: 13,
   },
   header: {
     flexDirection: "row",

@@ -206,3 +206,27 @@ CREATE TABLE reading_goals(
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='사용자별 월간 완독 목표';
 
+-- ─────────────────────────────────────────────
+-- V2.5 additions (auth 모듈 통합 — origin/YSE)
+-- ─────────────────────────────────────────────
+
+-- 1) users.login_id / users.nickname을 NULL 허용으로 변경.
+--    실제 auth 모듈의 User 모델(soft delete 설계)은 회원탈퇴 시 이 두 컬럼을 NULL로
+--    비워서 같은 login_id/nickname을 다른 계정이 재사용할 수 있게 한다 — MySQL UNIQUE
+--    인덱스는 NULL끼리는 중복으로 안 치기 때문. 기존 스키마는 NOT NULL이라 탈퇴 로직이
+--    그대로 막힌다.
+ALTER TABLE users
+  MODIFY COLUMN login_id VARCHAR(30) NULL,
+  MODIFY COLUMN nickname VARCHAR(30) NULL;
+
+-- 2) 관심 장르(온보딩/마이페이지) 저장용 신규 테이블.
+--    장르 값 자체의 검증은 백엔드 schemas/genre.py의 GENRE_CHOICES에서 수행.
+CREATE TABLE user_genre_interests(
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  genre VARCHAR(30) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_user_genre (user_id, genre),
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='사용자 관심 장르';
+

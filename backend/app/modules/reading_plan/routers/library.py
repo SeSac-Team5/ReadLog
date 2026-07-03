@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, Response
 from sqlalchemy.orm import Session
 
-from app.common.deps import get_current_user_id
-from app.db.session import get_db
+from app.modules.reading_plan.deps import get_current_user_id
+from app.db import get_db
 from app.modules.reading_plan.schemas.library import (
     LibraryCreateRequest,
     LibraryListResponse,

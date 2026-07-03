@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db
+from app.db import get_db
 from app.modules.reading_plan.schemas.book import BookSearchResponse
 from app.modules.reading_plan.services.book_service import search_books
 

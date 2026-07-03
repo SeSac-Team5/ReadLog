@@ -1,17 +1,20 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS } from '../../constants/theme';
+import { BookOpen, Home, User, Users } from 'lucide-react-native';
+import { colors } from '../../constants/theme';
 
-const TABS = [
-  { routeName: 'HomeTab',    label: '홈',     icon: '◎' },
-  { routeName: 'LibraryTab', label: '내 서재', icon: '▣' },
-  { routeName: 'GroupTab',   label: '독서모임', icon: '⊕' },
-  { routeName: 'MyPageTab',  label: '마이',    icon: '◉' },
+// Visual design from origin/YSE's TabBar (lucide icons), rewired onto
+// BottomTabBarProps (state/navigation) instead of YSE's manual
+// { active, onChangeTab } state — this is the prop shape React Navigation's
+// <Tab.Navigator tabBar={...}> actually passes in on this branch.
+const TABS: { routeName: string; label: string; Icon: typeof Home }[] = [
+  { routeName: 'HomeTab', label: '홈', Icon: Home },
+  { routeName: 'LibraryTab', label: '내 서재', Icon: BookOpen },
+  { routeName: 'GroupTab', label: '독서모임', Icon: Users },
+  { routeName: 'MyPageTab', label: '마이', Icon: User },
 ];
-
-const TAB_HEIGHT = 56;
 
 export default function TabBar({ state, navigation }: BottomTabBarProps) {
   const { bottom } = useSafeAreaInsets();
@@ -19,18 +22,19 @@ export default function TabBar({ state, navigation }: BottomTabBarProps) {
   const safeBottom = Platform.OS === 'android' ? Math.max(bottom, 16) : bottom;
 
   return (
-    <View style={[styles.bar, { paddingBottom: safeBottom }]}>
-      {TABS.map((tab, i) => {
-        const focused = state.index === i;
+    <View style={[styles.container, { paddingBottom: safeBottom || 16 }]}>
+      {TABS.map(({ routeName, label, Icon }, i) => {
+        const isActive = state.index === i;
+        const color = isActive ? colors.deepGreen : colors.textMuted;
         return (
           <TouchableOpacity
-            key={tab.routeName}
+            key={routeName}
             style={styles.tab}
-            onPress={() => navigation.navigate(tab.routeName as never)}
-            accessibilityLabel={tab.label}
+            onPress={() => navigation.navigate(routeName as never)}
+            accessibilityLabel={label}
           >
-            <Text style={[styles.icon, focused && styles.active]}>{tab.icon}</Text>
-            <Text style={[styles.label, focused && styles.active]}>{tab.label}</Text>
+            <Icon size={22} color={color} strokeWidth={isActive ? 2 : 1.5} />
+            <Text style={[styles.label, { color }]}>{label}</Text>
           </TouchableOpacity>
         );
       })}
@@ -39,13 +43,20 @@ export default function TabBar({ state, navigation }: BottomTabBarProps) {
 }
 
 const styles = StyleSheet.create({
-  bar: {
+  container: {
     flexDirection: 'row',
-    backgroundColor: COLORS.beigeLight,
-    borderTopWidth: 1, borderTopColor: COLORS.beigeDark,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.beigeLight,
   },
-  tab: { flex: 1, height: TAB_HEIGHT, justifyContent: 'center', alignItems: 'center', gap: 3 },
-  icon: { fontSize: 18, color: COLORS.textMuted },
-  label: { fontSize: 10, color: COLORS.textMuted },
-  active: { color: COLORS.deepGreen, fontWeight: '600' },
+  tab: {
+    flex: 1,
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 3,
+  },
+  label: {
+    fontSize: 10,
+  },
 });

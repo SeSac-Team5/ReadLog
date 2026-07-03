@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useReview } from "../../hooks/reading-plan/useReview";
+import { useLibrary } from "../../store/reading-plan/libraryStore";
 import type { UserLibraryItem } from "../../types/reading-plan/book";
 
 const COLORS = {
@@ -30,13 +31,44 @@ const COLORS = {
 const MAX_LENGTH = 100;
 const STAR_VALUES = [1, 2, 3, 4, 5];
 
+export default function OneLineReviewScreen({
+  navigation,
+  route,
+}: {
+  navigation: any;
+  route: { params: { libraryItemId: string } };
+}) {
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
+  const { items } = useLibrary();
+  const libraryItem = items.find((item) => item.id === route.params.libraryItemId) ?? null;
+
+  if (!libraryItem) {
+    return (
+      <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
+        <Text style={styles.notFoundText}>책 정보를 찾을 수 없어요</Text>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <OneLineReviewScreenView
+      libraryItem={libraryItem}
+      onBack={() => navigation.goBack()}
+      onSaved={() => navigation.goBack()}
+    />
+  );
+}
+
 interface OneLineReviewScreenProps {
   libraryItem: UserLibraryItem;
   onBack: () => void;
   onSaved?: () => void;
 }
 
-export function OneLineReviewScreen({ libraryItem, onBack, onSaved }: OneLineReviewScreenProps) {
+function OneLineReviewScreenView({ libraryItem, onBack, onSaved }: OneLineReviewScreenProps) {
   const { review, isLoading, error: loadError, save, remove } = useReview(libraryItem.book.id);
 
   const [text, setText] = useState("");
@@ -191,6 +223,13 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: COLORS.beigeLight,
+  },
+  notFoundText: {
+    flex: 1,
+    textAlign: "center",
+    textAlignVertical: "center",
+    color: COLORS.textMuted,
+    fontSize: 13,
   },
   header: {
     flexDirection: "row",

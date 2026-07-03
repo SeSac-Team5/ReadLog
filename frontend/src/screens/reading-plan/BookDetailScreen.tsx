@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useLayoutEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useLibrary } from "../../store/reading-plan/libraryStore";
-import type { BookSearchResult, LibraryStatus, UserLibraryItem } from "../../types/reading-plan/book";
+import type { BookSearchResult, LibraryStatus } from "../../types/reading-plan/book";
 
 const COLORS = {
   deepGreen: "#2D4A3E",
@@ -29,13 +29,21 @@ const STATUS_OPTIONS: { key: LibraryStatus; label: string }[] = [
   { key: "COMPLETED", label: "완독" },
 ];
 
-interface BookDetailScreenProps {
-  book: BookSearchResult;
-  onBack: () => void;
-  onAdded: (item: UserLibraryItem) => void;
-}
+export default function BookDetailScreen({
+  navigation,
+  route,
+}: {
+  navigation: any;
+  route: { params: { book: BookSearchResult } };
+}) {
+  const { book } = route.params;
+  const onBack = () => navigation.goBack();
+  const onAdded = () => navigation.goBack();
 
-export function BookDetailScreen({ book, onBack, onAdded }: BookDetailScreenProps) {
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
   const { items, addToLibrary } = useLibrary();
 
   const existingEntry = useMemo(
@@ -54,8 +62,8 @@ export function BookDetailScreen({ book, onBack, onAdded }: BookDetailScreenProp
     setIsSubmitting(true);
     setError(null);
     try {
-      const item = await addToLibrary(book, selectedStatus);
-      onAdded(item);
+      await addToLibrary(book, selectedStatus);
+      onAdded();
     } catch (err) {
       setError(err instanceof Error ? err.message : "내 서재에 추가하지 못했어요");
     } finally {

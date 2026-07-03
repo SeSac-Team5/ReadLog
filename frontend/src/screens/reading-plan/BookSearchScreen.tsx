@@ -24,11 +24,8 @@ const COLORS = {
   border: "rgba(0, 0, 0, 0.08)",
 };
 
-interface BookSearchScreenProps {
-  onBookPress: (book: BookSearchResult) => void;
-}
-
-export function BookSearchScreen({ onBookPress }: BookSearchScreenProps) {
+export default function BookSearchScreen({ navigation }: { navigation: any }) {
+  const onBookPress = (book: BookSearchResult) => navigation.navigate("BookDetail", { book });
   const { query, setQuery, results, isLoading, error, search, clear, searchedQuery } =
     useBookSearch();
   const { items, addToLibrary } = useLibrary();

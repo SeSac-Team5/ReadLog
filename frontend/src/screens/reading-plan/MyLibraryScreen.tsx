@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -13,11 +13,54 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { useLibrary } from "../../store/reading-plan/libraryStore";
 import type {
+  Book,
+  BookSearchResult,
   LibraryStatus,
   MonthlyGoal,
   UserLibraryItem,
 } from "../../types/reading-plan/book";
+
+function toSearchResult(book: Book): BookSearchResult {
+  return {
+    isbn13: book.isbn13,
+    title: book.title,
+    author: book.author,
+    publisher: book.publisher,
+    coverUrl: book.coverUrl ?? null,
+    pageCount: book.pageCount ?? null,
+    publishedDate: book.publishedDate ?? null,
+    description: book.description ?? null,
+  };
+}
+
+// React Navigation renders this with { navigation, route } — it owns the store
+// wiring (previously MyLibraryScreenContainer) and translates the callback-prop
+// interface below into navigation.navigate calls.
+export default function MyLibraryScreen({ navigation }: { navigation: any }) {
+  const { items, monthlyGoal, loadLibrary, loadMonthlyGoal, removeFromLibrary, saveMonthlyGoal } =
+    useLibrary();
+
+  useEffect(() => {
+    loadLibrary();
+    loadMonthlyGoal();
+  }, [loadLibrary, loadMonthlyGoal]);
+
+  return (
+    <MyLibraryScreenView
+      items={items}
+      monthlyGoal={monthlyGoal}
+      onSearchPress={() => navigation.navigate("BookSearch")}
+      onBookPress={(item) => navigation.navigate("ReadingProgress", { libraryItemId: item.id })}
+      onViewDetail={(item) => navigation.navigate("BookDetail", { book: toSearchResult(item.book) })}
+      onWriteReview={(item) => navigation.navigate("OneLineReview", { libraryItemId: item.id })}
+      onShareStory={(item) => navigation.navigate("SNSShare", { libraryItemId: item.id })}
+      onDeleteItems={removeFromLibrary}
+      onSaveMonthlyGoal={saveMonthlyGoal}
+    />
+  );
+}
 
 const COLORS = {
   deepGreen: "#2D4A3E",
@@ -59,7 +102,7 @@ interface MyLibraryScreenProps {
   onSaveMonthlyGoal: (target: number) => Promise<MonthlyGoal>;
 }
 
-export function MyLibraryScreen({
+function MyLibraryScreenView({
   items,
   monthlyGoal,
   onSearchPress,
@@ -661,7 +704,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.beigeLight,
   },
   coverDimOverlay: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     alignItems: "center",
     justifyContent: "center",
