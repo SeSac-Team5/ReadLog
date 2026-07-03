@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "frontend",
+    "slug": "frontend",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "com.sinsang2752.frontend",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "com.sinsang2752.frontend"
+    }
+  }
+}

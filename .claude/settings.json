@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/opt/homebrew/opt/mysql/bin/mysqladmin -uroot --socket=/tmp/rl_test_mysql.sock shutdown)",
+      "Bash(/opt/homebrew/opt/mysql/bin/mysql -uroot --socket=/tmp/rl_test_mysql2.sock -e 'CREATE DATABASE readlog_test; USE readlog_test; CREATE TABLE users\\(id BIGINT AUTO_INCREMENT PRIMARY KEY\\);')",
+      "Bash(/opt/homebrew/opt/mysql/bin/mysql -uroot --socket=/tmp/rl_test_mysql2.sock readlog_test -e ' *)",
+      "Bash(/opt/homebrew/opt/mysql/bin/mysql -uroot --socket=/tmp/rl_test_mysql2.sock readlog_test -e 'DESCRIBE reading_goals;')",
+      "Bash(grep -n \"책 카드 \\\\`⋮\\\\` 메뉴 신설\" /Users/shinhyeonsang/workspace/readlog/docs/reading-plan-tradeoffs.md)"
+    ]
+  }
+}

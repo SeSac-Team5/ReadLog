@@ -159,3 +159,50 @@ ALTER TABLE sns_stickers
   ADD COLUMN content VARCHAR(300) NULL COMMENT '코멘트 텍스트 또는 배지 문구 (emoji 타입일 때는 emoji 컬럼 사용)',
   ADD COLUMN visible BOOLEAN NOT NULL DEFAULT TRUE COMMENT '오버레이 노출 토글 (끄기 가능)';
 
+-- ─────────────────────────────────────────────
+-- V2.2 additions
+-- ─────────────────────────────────────────────
+
+-- 1) sns_stickers.type에 'book_cover'(현재 읽고 있는 책의 표지 이미지 스티커) 추가.
+--    별도 컬럼 없이 프론트에서 해당 book_library의 book.cover_url을 그려주는 방식이라 content/emoji는 비워둠.
+ALTER TABLE sns_stickers
+  MODIFY COLUMN type ENUM('emoji','comment','book_cover','progress_ring','progress_bar','progress_badge')
+    NOT NULL DEFAULT 'emoji' COMMENT '스티커 종류';
+
+-- 2) SNS 공유 화면의 하단 고정 코멘트 입력(sns_posts.content)은 제거 결정 — 코멘트는 코멘트 스티커로 대체.
+--    컬럼 자체는 남겨두되(과거 게시물 호환) 신규 게시물에는 더 이상 값이 채워지지 않음.
+
+-- 3) sns_posts.image_url을 VARCHAR(500) → LONGTEXT로 확장.
+--    공용 이미지 업로드/스토리지가 아직 없어서(docs/reading-plan-tradeoffs.md 참고)
+--    캡처한 이미지를 base64 data: URI로 직접 저장하는데, VARCHAR(500)로는 어림도 없음.
+ALTER TABLE sns_posts
+  MODIFY COLUMN image_url LONGTEXT NULL COMMENT '캡처 이미지 (현재는 data: URI 직접 저장, 추후 스토리지 URL로 교체 예정)';
+
+-- ─────────────────────────────────────────────
+-- V2.3 additions
+-- ─────────────────────────────────────────────
+
+-- 1) 코멘트 스티커 배경색 프리셋(화이트/그레이/투명/다크) 지원을 위한 컬럼 추가.
+--    프리셋 키 문자열("white"|"gray"|"transparent"|"dark")을 저장 — 다른 스티커 타입은 NULL로 둠.
+ALTER TABLE sns_stickers
+  ADD COLUMN background_color VARCHAR(20) NULL COMMENT '코멘트 스티커 배경 프리셋 키 (white/gray/transparent/dark)';
+
+-- ─────────────────────────────────────────────
+-- V2.4 additions
+-- ─────────────────────────────────────────────
+
+-- 1) 이달의 목표(월별 완독 목표 권수) 저장용 신규 테이블.
+--    completed 권수는 저장하지 않고 user_library.status/completed_at 기준으로 매번 계산해서 응답한다.
+--    컬럼명은 year_month가 아니라 goal_month다 — YEAR_MONTH는 MySQL의 예약어(INTERVAL 단위)라
+--    따옴표 없이 컬럼명으로 쓰면 문법 오류가 난다 (실제로 겪음, 아래 "MySQL 예약어" 섹션 참고).
+CREATE TABLE reading_goals(
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  goal_month CHAR(7) NOT NULL COMMENT 'YYYY-MM',
+  target_books INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_reading_goals_user_month (user_id, goal_month),
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='사용자별 월간 완독 목표';
+
