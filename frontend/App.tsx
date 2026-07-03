@@ -1,8 +1,8 @@
-// TEMPORARY dev-only entry point for on-device smoke testing.
-// Delete/replace once the real navigation stack (App.tsx + react-navigation) lands.
+// TEMPORARY entry point until the real navigation stack (react-navigation) lands.
+// "내 서재" is the home screen; every other screen is reached through it.
 import React, { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { BookDetailScreen } from "./src/screens/reading-plan/BookDetailScreen";
 import { BookSearchScreen } from "./src/screens/reading-plan/BookSearchScreen";
@@ -37,9 +37,7 @@ const SAMPLE_BOOK: BookSearchResult = {
   description: "테스트용 샘플 도서",
 };
 
-type DevScreen = "library" | "search" | "detail" | "progress" | "review" | "sns";
-
-const DEV_TABS: DevScreen[] = ["library", "search", "progress", "review", "sns"];
+type Screen = "library" | "search" | "detail" | "progress" | "review" | "sns";
 
 function NeedsLibrarySelection({ onGoToLibrary }: { onGoToLibrary: () => void }) {
   return (
@@ -54,12 +52,12 @@ function NeedsLibrarySelection({ onGoToLibrary }: { onGoToLibrary: () => void })
   );
 }
 
-function DevScreenSwitcher() {
+function RootScreenRouter() {
   const { items } = useLibrary();
-  const [screen, setScreen] = useState<DevScreen>("library");
+  const [screen, setScreen] = useState<Screen>("library");
   const [selectedBook, setSelectedBook] = useState<BookSearchResult>(SAMPLE_BOOK);
   const [selectedLibraryItemId, setSelectedLibraryItemId] = useState<string | null>(null);
-  const [detailReturnScreen, setDetailReturnScreen] = useState<DevScreen>("search");
+  const [detailReturnScreen, setDetailReturnScreen] = useState<Screen>("search");
 
   // Look this up live from the store (instead of holding a frozen copy) so that
   // switching tabs and coming back always reflects the latest saved progress/status.
@@ -134,15 +132,6 @@ function DevScreenSwitcher() {
             <NeedsLibrarySelection onGoToLibrary={() => setScreen("library")} />
           ))}
       </View>
-      <SafeAreaView style={styles.devBar} edges={["bottom"]}>
-        {DEV_TABS.map((tab) => (
-          <TouchableOpacity key={tab} style={styles.devButton} onPress={() => setScreen(tab)}>
-            <Text style={[styles.devButtonText, screen === tab && styles.devButtonTextActive]}>
-              {tab}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </SafeAreaView>
     </View>
   );
 }
@@ -151,7 +140,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <LibraryProvider>
-        <DevScreenSwitcher />
+        <RootScreenRouter />
       </LibraryProvider>
     </SafeAreaProvider>
   );
@@ -163,23 +152,6 @@ const styles = StyleSheet.create({
   },
   screenArea: {
     flex: 1,
-  },
-  devBar: {
-    flexDirection: "row",
-    backgroundColor: "#1C1A16",
-  },
-  devButton: {
-    flex: 1,
-    paddingVertical: 8,
-    alignItems: "center",
-  },
-  devButtonText: {
-    color: "rgba(253, 251, 244, 0.5)",
-    fontSize: 11,
-  },
-  devButtonTextActive: {
-    color: "#FDFBF4",
-    fontWeight: "600",
   },
   needsSelection: {
     flex: 1,
