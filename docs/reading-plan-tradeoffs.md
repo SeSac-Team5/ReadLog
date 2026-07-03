@@ -1,0 +1,115 @@
+# reading-plan 모듈 — 절충점 / 임시 처리 목록
+
+> 담당: B (reading-plan)
+> 공용 인프라(백엔드 core/db, 프론트 navigation/theme/api client)가 아직 없는 상태에서
+> "코드는 먼저 작성하고 나중에 연결한다"는 방침(2026-07-03 합의)으로 진행하면서 생긴 임시 처리들을 정리한 문서.
+> 공용 인프라가 준비되면 이 문서의 항목들을 하나씩 지워나가면 됨.
+> **2026-07-03 업데이트**: 로컬 DB 테스트를 위해 아래 "백엔드 공용 인프라"를 실제로 만들었다 (B가 임시로 작업, 공용 파일이라 팀 리뷰 필요 — 별도 커밋/PR로 분리 권장).
+
+## 백엔드 공용 인프라 — 로컬 테스트용으로 최소 구현 완료 (팀 리뷰 대기)
+
+기존엔 아래 경로들이 존재하지 않는다고 가정만 하고 reading_plan 코드를 작성했었는데, 로컬 DB 테스트를 위해 최소 버전으로 실제로 만들었다.
+
+| 경로 | 내용 | 비고 |
+|---|---|---|
+| `backend/app/core/config.py` | `pydantic-settings` 기반 `Settings` (`DATABASE_URL`, `REDIS_URL`, `ALADIN_API_KEY`, `SECRET_KEY`), `.env` 로드 | |
+| `backend/app/db/base.py` | SQLAlchemy `Base` + reading_plan 모델 전체 import (metadata 등록용) + `users` 테이블 임시 스텁(1컬럼) | **임시 스텁** — 아래 참고. 다른 모듈 모델이 생기면 여기에도 import 추가 필요 |
+| `backend/app/db/session.py` | `engine`/`SessionLocal`/`get_db` | MySQL(PyMySQL 드라이버) 기준 |
+| `backend/app/common/deps/current_user.py` | `get_current_user_id` | **임시 스텁** — 아래 참고 |
+| `backend/app/main.py` | FastAPI 앱, reading_plan 라우터를 `/api` prefix로 등록, `/health` | auth/reading_group 라우터는 아직 미등록 |
+| `backend/requirements.txt`, `backend/.env`, `backend/.env.example` | 의존성 목록 + 환경변수 | `.env`는 로컬 전용(gitignore), `.env.example`만 커밋됨 |
+| `docker-compose.yml` (루트) | 로컬 MySQL(`docs/db/schema.sql`로 자동 초기화) + Redis | `docker-compose up -d` |
+
+### ⚠ `get_current_user_id`는 진짜 인증이 아니다
+`backend/app/common/deps/current_user.py`는 요청 헤더 `X-User-Id`(기본값 1)를 그대로 신뢰하는 임시 스텁이다. 클라이언트가 아무 값이나 헤더에 넣으면 다른 사용자로 위장할 수 있으므로 **로컬 개발/테스트 전용**이며, auth 모듈이 JWT/세션 검증을 붙이면 반드시 교체해야 한다 (프로덕션에 이 상태로 배포 금지).
+
+### ⚠ `app/db/base.py`의 `users` 테이블도 진짜가 아니다
+reading_plan의 여러 테이블(`user_library`, `books`, `reviews`, `sns_posts`)이 `ForeignKey("users.id")`를 참조하는데, auth 모듈의 실제 `User` 모델이 아직 없어서 SQLAlchemy가 FK를 해석할 대상 테이블을 못 찾아 `NoReferencedTableError`가 났었다(실제로 "내 서재에 추가"에서 발생). `id` 컬럼 하나만 있는 임시 `Table("users", ...)`을 등록해서 우선 해결했다. **auth 모듈이 진짜 `User` 모델을 추가하면 이 스텁은 반드시 지워야 한다** — 같은 이름으로 두 번 등록되면 `Table 'users' is already defined` 에러가 남.
+
+### 검증한 것 / 검증 못한 것
+- `pip install -r requirements.txt` → `python -c "from app.main import app"` → 라우트 전부 정상 등록 확인함 (`backend/.venv`에 설치돼 있음, `source .venv/bin/activate`로 재사용 가능).
+- `Base.metadata.create_all()`로 테이블 생성 확인함 (`users` 스텁 포함 7개 테이블 전부 생성됨).
+- 실제 MySQL(docker-compose)에 붙여서 요청까지 보내는 건 이 환경에 Docker가 없어서 확인 못함 — 대신 SQLite + FastAPI TestClient로 `/library`, `/reviews`, `/sns-posts` 등 주요 엔드포인트를 mock 없이 실제 요청/응답으로 검증함.
+- 알라딘 검색(`GET /books/search`)은 실제 `ALADIN_API_KEY` 없이는 테스트 불가 (`.env`의 `ALADIN_API_KEY`를 발급받은 키로 교체해야 함). 검색 API가 `http://`로 호출되던 걸 `https://` + `follow_redirects=True`로 고쳤고(알라딘이 301 리다이렉트를 내려서 안 되고 있었음), 신규 책 등록 시 `pageCount`가 비어있으면 `ItemLookUp` API로 한 번 더 채우도록 추가함.
+
+## 프론트엔드 — 공용 컴포넌트/인프라 부재로 인한 임시 처리
+
+| 항목 | 임시 처리 | 실제로 필요한 것 |
+|---|---|---|
+| 네비게이션 | 모든 화면이 `onBack`/`onSearchPress`/`onBookPress`/`onAdded`/`onShared` 같은 콜백 prop으로 화면 전환을 위임 (navigation 라이브러리 미사용) | 팀원이 작업 중인 네비게이션 스택에 화면을 등록하고 콜백을 실제 이동 로직으로 연결 |
+| 디자인 토큰 | `frontend/src/constants/theme.ts`가 없어서 각 화면 파일 안에 `COLORS` 상수를 중복 선언 (CLAUDE.md 팔레트 값과 동일하게 유지 중) | `theme.ts` 생성 후 각 화면의 로컬 `COLORS`를 전부 그걸 참조하도록 교체 |
+| API 클라이언트 | `frontend/src/api/client`가 없어서 `frontend/src/api/reading-plan/httpClient.ts`에 자체 `fetch` 래퍼를 만들어 사용 (base URL은 `EXPO_PUBLIC_API_BASE_URL` env, 인증 헤더 없음) | 공용 API 클라이언트가 생기면 reading-plan 쪽 요청도 그걸로 교체 (인증 토큰 첨부 등) |
+| 앱 진입점 | `LibraryProvider`를 감싸는 루트가 없음 — `MyLibraryScreenContainer`, `BookSearchScreen` 등은 같은 `LibraryProvider` 트리 안에 있다고 가정하고 `useLibrary()`를 호출 | 네비게이션 스택 루트(또는 그 상위)에서 `<LibraryProvider>`로 감싸야 함 |
+
+## `docs/dev-environment.md`와 어긋나는 부분 (뒤늦게 확인함)
+
+reading-plan 화면들을 만들 당시엔 `docs/dev-environment.md`를 확인하지 못해서, 팀이 이미 정해둔 라이브러리 스택과 다른 방식으로 구현한 부분이 있다.
+
+| 항목 | 팀이 정한 것 (dev-environment.md) | 지금 reading-plan 코드 상태 |
+|---|---|---|
+| HTTP 클라이언트 | `axios` | 직접 만든 `fetch` 래퍼(`api/reading-plan/httpClient.ts`) — 아직 `axios` 미설치 |
+| 서버 상태 관리 | `@tanstack/react-query` | `useState`/`useEffect` 기반 커스텀 훅(`useBookSearch`, `useProgressLogs`, `useReview` 등) |
+| 클라이언트 상태 | `zustand` | React Context + `useReducer`(`libraryStore.tsx`) |
+| 아이콘 | `lucide-react-native` | 이모지/텍스트 문자(🔍, ‹, ✕ 등)로 임시 대체 |
+| 스티커 드래그 | `react-native-gesture-handler` + `react-native-reanimated` | RN 코어 `PanResponder` (새 의존성 없이 구현) |
+
+전부 동작은 하지만, 팀 표준 라이브러리가 실제로 설치되는 시점에 위 부분들을 맞춰서 리팩터링하는 게 좋음 (지금 당장 급한 건 아님).
+
+## SNS 공유 화면 관련 절충점
+
+1. ~~**원형 게이지 스티커 단순화**~~ — **해결됨.** `react-native-svg`를 설치(`pod install` 완료)하고 `progress_ring`을 실제 SVG 원형 게이지(`strokeDasharray` 기반)로 교체했다. 새 네이티브 모듈이라 다음 Xcode 빌드 때 반영됨(JS 리로드만으로는 안 됨).
+2. **이미지 업로드 방식** — 캡처한 이미지를 스토리지에 올리는 공용 엔드포인트(S3 등)가 없어서, `POST /sns-posts`에 캡처 결과를 `data:` URI로 직접 실어 보낸다.
+   - 필요한 것: 공용 미디어 업로드 엔드포인트가 생기면 `imageUrl`을 업로드 결과 URL로 교체 (payload 크기/서버 저장 부담 감소).
+   - **실제로 겪은 버그**: 처음엔 `captureRef`를 PNG(무손실)로 캡처해서 base64가 수백만 자까지 커졌고, `sns_posts.image_url`도 원래 `VARCHAR(500)`라 "Data too long" 에러가 났다. 캡처를 JPEG(`quality: 0.7~0.9`)로 바꿔 용량을 줄이고, `image_url`을 `LONGTEXT`로 확장해서 해결(스키마 V2.2 additions 참고). base64 직접 저장 자체는 여전히 임시방편이라, 사진이 아주 크거나 스티커가 많으면 다시 문제될 수 있음 — 근본 해결은 결국 공용 업로드 엔드포인트.
+3. **스티커 드래그 구현** — `react-native-gesture-handler`/`reanimated` 없이 React Native 코어 `PanResponder`만으로 드래그를 구현했다 (새 의존성 추가 없음). 확대/축소·회전은 버튼 스텝퍼 방식(핀치 제스처 아님). 팀은 원래 `gesture-handler`+`reanimated` 조합을 쓰기로 했었음(위 표 참고).
+   - 필요하면: `react-native-gesture-handler` 설치되는 대로 `DraggableSticker`를 `PanGestureHandler` 기반으로 교체해 핀치/회전 제스처까지 자연스럽게 지원.
+4. **인스타그램 공유 API 수정 완료** — 처음엔 `Share.shareSingle({ social: Share.Social.INSTAGRAM, url, type })`로 잘못 구현했었는데, `dev-environment.md` 3번 항목에 팀이 이미 `INSTAGRAM_STORIES` + `backgroundImage`/`appId` 조합으로 정해둔 걸 확인하고 맞춰서 고쳤다.
+   - **남은 일**: `appId`는 Facebook Developer 앱을 등록해야 나오는 값이라 아직 빈 문자열(`EXPO_PUBLIC_INSTAGRAM_APP_ID` env, 미설정)이다. 실제 앱 ID가 나오면 `.env`에 채워 넣어야 진짜 인스타그램 스토리 공유가 동작함.
+   - **임시 폴백 추가**: `INSTAGRAM_APP_ID`가 비어있으면 `Share.shareSingle`(Instagram 전용) 대신 `Share.open`(일반 공유 시트)으로 자동 대체하도록 `SNSShareScreen.tsx`에 분기를 추가했다. Meta 개발자 앱 승인/설정을 기다리는 동안에도 공유 플로우 전체(캡처→게시물 생성→스티커 저장→공유)를 테스트할 수 있게 하기 위함. `appId`가 채워지면 자동으로 진짜 `INSTAGRAM_STORIES` 경로를 타니 이 분기는 그대로 둬도 무방함.
+   - `react-native-share`는 Expo config plugin(`app.plugin.js`)을 제공하는데 아직 `app.json`에 등록 안 함 — iOS `Info.plist`의 `LSApplicationQueriesSchemes`에 인스타그램이 없어서 "인스타그램을 열 수 없음" 류 에러가 날 수 있음. 플러그인 등록은 `expo prebuild` 재실행이 필요한데, `dev-environment.md`에 이미 경고된 대로 재실행하면 Xcode 서명 설정이 초기화될 위험이 있어 실제로 이 에러를 만나기 전까진 보류함.
+5. **스티커가 사진 영역 밖으로 나가는 버그(해결)** — `DraggableSticker`가 top-left 앵커 좌표만 0~1로 clamp하고 있어서, 앵커를 가장자리로 끌면 스티커 몸체 대부분이 사진 밖으로 삐져나갔다. `onLayout`으로 스티커의 실제 렌더 크기를 측정해서, `scale`까지 반영한 실제 시각적 경계가 사진 안에 들어오도록 clamp 범위를 다시 계산하도록 고쳤다.
+6. **공유 이미지에 선택 테두리(점선)가 찍히는 버그(해결)** — 스티커를 누른 채로(선택 상태로) 공유하면 `stickerWrapperSelected`의 점선 테두리까지 캡처됐다. `handleShare` 시작 시 선택을 잠깐 해제하고 2프레임(`requestAnimationFrame` 두 번) 기다린 뒤 캡처하고, 끝나면 원래 선택 상태로 복원하도록 고쳤다.
+7. **코멘트 스티커 배경 4종 추가** — 화이트/그레이/투명/다크 프리셋을 `sns_stickers.background_color` 컬럼(신규, 스키마 V2.3)에 저장한다. 다크 배경일 때만 텍스트를 흰색으로 자동 전환.
+
+## 백엔드 — Enum 컬럼 관련 주의사항 (실제로 겪은 버그)
+
+SQLAlchemy의 `Enum(SomePyEnum, native_enum=False)`는 **기본적으로 Python enum의 이름(`EMOJI`)을 DB에 저장/조회하지, 값(`"emoji"`)을 쓰지 않는다.** `sns_stickers.type`이 이 문제로 걸렸다 — 실제 MySQL 컬럼은 `docs/db/schema.sql`에 소문자 값(`'emoji'`, `'comment'`, ...)으로 정의돼 있는데, SQLAlchemy는 대문자 이름 기준으로 읽으려다 `LookupError: 'emoji' is not among the defined enum values`가 났다. (INSERT는 MySQL의 enum 값 대소문자 비교가 관대해서 조용히 성공하고, SELECT 시점에 터지는 게 헷갈리는 부분.)
+
+**고친 것**: `models/sns_sticker.py`의 `StickerType`, `models/user_library.py`의 `LibraryStatus` 둘 다 `Enum(..., values_callable=lambda cls: [m.value for m in cls])`를 추가해서 값 기준으로 매핑하도록 고쳤다. 실제 DB round-trip(insert 후 새 세션에서 재조회)까지 테스트해서 확인함.
+
+**앞으로 새 Enum 컬럼을 추가할 때 반드시 `values_callable`을 같이 넣을 것** — 이름과 값이 우연히 같은 enum(`LibraryStatus`의 `WISH="WISH"`처럼)은 이 버그가 조용히 숨어있다가, 나중에 이름≠값인 enum을 추가하는 순간 터진다.
+
+## 내 서재 화면 — 상태별 표시/탭 동작 정리 (2026-07-03)
+
+- **상태 배지**: 기존엔 `COMPLETED`만 우측 상단에 체크 배지가 떴다. `READING`(📖)/`WISH`(🔖)에도 배지를 추가해서 그리드에서 바로 상태를 구분할 수 있게 했다.
+- **`WISH` 탭 동작 변경**: 기존엔 `WISH` 상태 책을 탭하면 (아직 갖고 있지도 않은 책인데) 독서 진도 입력 화면으로 넘어가는 버그가 있었다. `WISH`는 책 상세(`BookDetailScreen`)로, `READING`은 기존대로 진도 입력으로, `COMPLETED`는 기존 오버레이(감상 남기기/스토리 공유)로 분기하도록 고쳤다.
+- **`WISH` 책 상세 데이터 출처**: 별도 조회 없이 `GET /library`가 이미 갖고 있는 `book` 정보를 그대로 `BookDetailScreen`에 넘긴다. 다만 `BookDetailScreen`은 원래 검색 결과(`BookSearchResult`, `description`/`publishedDate` 포함) 전용이었고 라이브러리 응답의 `book`(`LibraryBookSummary`)에는 그 두 필드가 없었어서, 백엔드 `LibraryBookSummary`/`to_library_item_response`에 `description`/`publishedDate`를 추가해 채워 보내도록 고쳤다 (`docs/api-contracts/reading-plan.md`에도 반영). `BookDetailScreen`은 이미 `isbn13`으로 `existingEntry`를 찾아 "상태 업데이트" 버튼을 보여주는 로직이 있어서 그대로 재사용 가능했다.
+
+## 내 서재 화면 — 책 삭제 + 이달의 목표 추가 (2026-07-03)
+
+- **`⋮` 메뉴 위치**: 처음엔 그리드 카드마다 `⋮` 버튼을 달았었는데, 사용자 피드백으로 **`SummaryBanner`(완독 권수/이달의 목표 배너) 우측 상단 하나로 통일**했다 — "삭제"/"목표 설정" 둘 다 화면 레벨 액션이라 카드마다 반복해서 둘 필요가 없다는 판단. `Alert.alert`로 "삭제"/"목표 설정"/"취소" 액션시트를 띄운다 (카메라 촬영/앨범 선택 때 쓴 것과 동일한 패턴, 별도 UI 라이브러리 없이 구현).
+- **선택 삭제(토글) 모드**: 배너 `⋮` → "삭제"를 누르면 아무것도 선택 안 된 채로 "선택 모드"에 들어간다. 이 모드에서는 카드를 탭할 때마다(상태 무관) 체크 토글만 되고, 기존 탭 동작(진도입력/상세/오버레이)은 잠긴다. 헤더가 "취소" / "N개 선택" / "삭제"로 바뀌고, "삭제" 확인 시 `DELETE /library/{id}`를 선택한 개수만큼 병렬 호출한다. 필터(전체/읽는 중/완독/읽고 싶어요)를 바꿔도 선택 상태(`selectedIds`)는 유지되므로, 여러 상태를 넘나들며 골라서 한 번에 지울 수 있다.
+- **삭제 시 연쇄 삭제**: `user_library` 삭제 시 `reading_progress_logs`/`bookmarks`는 스키마의 `ON DELETE CASCADE`로 자동 삭제된다. `reviews`/`sns_posts`는 `book_id` 기준이라 삭제되지 않고 남는다 — 같은 책을 나중에 다시 추가하면 예전 한줄평/SNS 게시물이 그대로 남아있을 수 있음 (의도된 동작인지는 아직 논의 안 됨, 필요하면 나중에 정책 결정).
+- **이달의 목표(신규 기능)**: Figma 목업(`docs/figma-export/App.tsx`)엔 있었지만 그동안 구현이 안 돼 있던 기능. 배너 `⋮` 메뉴의 "목표 설정"에서 진입하는 모달(커스텀 `Modal` + `TextInput`, 별도 라이브러리 없음)로 이번 달 목표 권수를 입력한다.
+  - 백엔드에 `reading_goals(user_id, year_month, target_books)` 신규 테이블 추가 (스키마 V2.4). `completed`는 별도로 저장하지 않고 `user_library.status=COMPLETED AND completed_at`이 이번 달인 행 수를 매번 계산해서 응답한다.
+  - `/goals/current`는 "서버 기준 이번 달"만 다룬다 — 과거 달 조회/수정 API는 없음 (요구사항에 없었음).
+  - 목표를 아직 설정 안 한 상태(`target: null`)에서는 배너에 진행바 대신 "책 카드의 ⋮ 메뉴에서 목표를 설정해보세요" 안내 문구만 뜬다.
+  - SQLite로 목표 upsert/재조회, 삭제 후 재삭제 시 404 나는지까지 라운드트립 테스트해서 확인함.
+
+### ⚠ 실제로 겪은 버그: `year_month`는 MySQL 예약어라 컬럼명으로 못 씀
+
+`reading_goals` 테이블을 처음엔 `year_month CHAR(7)` 컬럼으로 만들었는데, 사용자가 실제 MySQL(8.0.46)에 그대로 실행하니 `CREATE TABLE` 문 자체가 문법 오류로 실패했다. 에러 메시지가 애매해서(따옴표 깨짐/이전 문장과 섞임을 먼저 의심함) 로컬에 Homebrew MySQL(9.5, 8.0 계열과 문법 호환)을 임시로 띄워 동일 문장을 그대로 재현했고, 컬럼명을 하나씩 바꿔가며 이분 탐색한 결과 **`YEAR_MONTH`가 `INTERVAL ... YEAR_MONTH` 구문에 쓰이는 예약어라 따옴표 없이 컬럼명으로 못 쓴다**는 걸 확인했다 (`day_hour`, `day_minute`, `hour_minute` 등 다른 INTERVAL 단위 이름들도 전부 동일하게 실패함 — MySQL 예약어 목록에 있는 컴파운드 시간 단위는 전부 해당).
+
+**고친 것**: 컬럼명을 `year_month` → `goal_month`로 변경 (`docs/db/schema.sql`, `models/reading_goal.py`, `services/goal_service.py` 전부 반영). API 응답 필드명(`yearMonth`)은 DB 컬럼명과 무관하므로 그대로 유지.
+
+**앞으로 새 컬럼/테이블명을 지을 때**: `YEAR_MONTH`, `DAY_HOUR`, `DAY_MINUTE`, `DAY_SECOND`, `HOUR_MINUTE`, `HOUR_SECOND`, `MINUTE_SECOND` 같은 MySQL `INTERVAL` 복합 단위 이름은 예약어라 피할 것 (백틱으로 감싸면 되긴 하지만, 매번 신경 쓸 필요 없이 다른 이름을 쓰는 게 마음 편함).
+
+## SNS 공유 화면 — 스티커 확대/회전을 버튼 대신 두 손가락 제스처로 (2026-07-03)
+
+기존엔 스티커를 고르면 "확대"/"축소"/"회전" 버튼을 눌러 15%/15도씩 계단식으로 조절했는데, 사용자가 "꼭 버튼이어야 하냐, 두 손가락으로 직접 확대·회전하면 안 되냐"고 요청해서 표준적인 핀치-투-줌/두 손가락 회전 제스처로 교체했다.
+
+- **`react-native-gesture-handler` 없이 구현**: 이 프로젝트는 스티커 드래그도 이미 RN 코어 `PanResponder`만으로 구현돼 있어서(팀이 원래 쓰기로 한 `gesture-handler`+`reanimated`가 아직 안 붙음, 위 "팀 표준 라이브러리 미도입" 표 참고), 핀치/회전도 같은 방식으로 맞췄다. `PanResponder`의 콜백에 넘어오는 `event.nativeEvent.touches` 배열(현재 화면에 닿아있는 모든 손가락의 `pageX`/`pageY`)을 직접 읽어서, 터치가 2개면 두 점 사이 거리(피타고라스)로 스케일 배율을, 두 점이 이루는 각도(`atan2`)로 회전각을 계산한다.
+- **기준점(anchor) 스냅샷 방식**: 두 번째 손가락이 닿는 순간의 거리/각도와 스티커의 그 시점 `scale`/`rotation`을 `pinchStartRef`에 저장해두고, 이후 매 프레임 "지금 거리 ÷ 기준 거리"를 기준 `scale`에 곱하고 "지금 각도 − 기준 각도"를 기준 `rotation`에 더하는 식으로 계산한다. 매 프레임 이전 값에 델타를 누적하는 방식이 아니라서 오차가 쌓이지 않는다.
+- **1손가락 ↔ 2손가락 전환 시 점프 방지**: 핀치 중엔 위치(x, y)를 건드리지 않고 스케일/회전만 바꾸는데, 손가락 하나를 떼서 다시 드래그(이동)로 전환되는 순간 `PanResponder`의 `gesture.dx/dy`는 제스처 시작 시점(첫 손가락이 닿은 순간)부터 누적된 값이라 그대로 쓰면 위치가 홱 튄다. 그래서 2→1손가락 전환을 감지한 프레임에 `startPos`를 스티커의 현재 위치로, `dragOffsetRef`를 그 순간의 `gesture.dx/dy`로 다시 앵커링해서, 그 이후의 이동만 반영되도록 했다.
+- **버튼 + 제스처 병행**: 처음엔 확대/축소/회전 버튼을 지우고 제스처로만 대체했었는데, 사용자가 "제스처는 위화감 없지만 세밀 조정엔 버튼도 같이 있는 게 낫다"고 해서 **확대/축소/회전 버튼(15%/15도 단위)을 다시 살리고 두 손가락 제스처와 함께 제공**하는 걸로 바꿨다. 버튼은 값을 15%/15도씩 정확히 스텝 이동시키고, 제스처는 손끝 움직임에 맞춰 연속적으로 반영되는 식이라 서로 배타적이지 않고 같은 `updateSticker(id, { scale, rotation })` 경로를 공유한다. 숨기기/삭제는 원래부터 버튼 전용(토글/파괴적 동작이라 제스처로 매핑하기 애매함).
+- **한계/추후 개선 여지**: `gesture-handler`의 `PinchGestureHandler`/`RotationGestureHandler`처럼 velocity 기반 감쇠나 두 제스처의 정교한 동시 인식은 없다 — 순수 좌표 계산이라 다소 투박할 수 있음. 실제 기기에서 써보고 위화감이 크면 `gesture-handler` 도입 시점에 이 부분부터 교체하는 게 좋다.

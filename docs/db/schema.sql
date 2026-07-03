@@ -133,3 +133,76 @@ CREATE INDEX idx_ul_user ON user_library(user_id);
 CREATE INDEX idx_ul_book ON user_library(book_id);
 CREATE INDEX idx_gp_group ON reading_progress(group_id);
 CREATE INDEX idx_gc_group ON group_comments(group_id);
+
+-- ─────────────────────────────────────────────
+-- V2.1 additions (팀 결정 반영 — CLAUDE.md §8)
+-- ─────────────────────────────────────────────
+
+-- 1) WISH 상태는 기존 user_library.status ENUM에 이미 존재 → 스키마 변경 불필요, 사용 확정만 하면 됨
+
+-- 2) 개인 독서 진도 타임라인 (독서 진도 입력 화면의 "이전 진도 기록 리스트")
+CREATE TABLE reading_progress_logs(
+ id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT 'PK',
+ library_id BIGINT NOT NULL COMMENT 'user_library.id 참조',
+ page INT COMMENT '현재 페이지 (숫자 입력 방식일 때)',
+ percent FLOAT CHECK(percent>=0 AND percent<=100) COMMENT '진행률 % (슬라이더 입력 방식일 때)',
+ memo VARCHAR(300) COMMENT '선택 메모',
+ recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '기록 시각 (자동 저장)',
+ FOREIGN KEY(library_id) REFERENCES user_library(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='개인 독서 진도 기록 타임라인';
+CREATE INDEX idx_rpl_library ON reading_progress_logs(library_id);
+
+-- 3) sns_stickers 확장: 이모지 스티커 / 진도 시각화 오버레이 / 코멘트 스티커를 한 테이블에서 구분
+ALTER TABLE sns_stickers
+  ADD COLUMN type ENUM('emoji','comment','progress_ring','progress_bar','progress_badge')
+    NOT NULL DEFAULT 'emoji' COMMENT '스티커 종류',
+  ADD COLUMN content VARCHAR(300) NULL COMMENT '코멘트 텍스트 또는 배지 문구 (emoji 타입일 때는 emoji 컬럼 사용)',
+  ADD COLUMN visible BOOLEAN NOT NULL DEFAULT TRUE COMMENT '오버레이 노출 토글 (끄기 가능)';
+
+-- ─────────────────────────────────────────────
+-- V2.2 additions
+-- ─────────────────────────────────────────────
+
+-- 1) sns_stickers.type에 'book_cover'(현재 읽고 있는 책의 표지 이미지 스티커) 추가.
+--    별도 컬럼 없이 프론트에서 해당 book_library의 book.cover_url을 그려주는 방식이라 content/emoji는 비워둠.
+ALTER TABLE sns_stickers
+  MODIFY COLUMN type ENUM('emoji','comment','book_cover','progress_ring','progress_bar','progress_badge')
+    NOT NULL DEFAULT 'emoji' COMMENT '스티커 종류';
+
+-- 2) SNS 공유 화면의 하단 고정 코멘트 입력(sns_posts.content)은 제거 결정 — 코멘트는 코멘트 스티커로 대체.
+--    컬럼 자체는 남겨두되(과거 게시물 호환) 신규 게시물에는 더 이상 값이 채워지지 않음.
+
+-- 3) sns_posts.image_url을 VARCHAR(500) → LONGTEXT로 확장.
+--    공용 이미지 업로드/스토리지가 아직 없어서(docs/reading-plan-tradeoffs.md 참고)
+--    캡처한 이미지를 base64 data: URI로 직접 저장하는데, VARCHAR(500)로는 어림도 없음.
+ALTER TABLE sns_posts
+  MODIFY COLUMN image_url LONGTEXT NULL COMMENT '캡처 이미지 (현재는 data: URI 직접 저장, 추후 스토리지 URL로 교체 예정)';
+
+-- ─────────────────────────────────────────────
+-- V2.3 additions
+-- ─────────────────────────────────────────────
+
+-- 1) 코멘트 스티커 배경색 프리셋(화이트/그레이/투명/다크) 지원을 위한 컬럼 추가.
+--    프리셋 키 문자열("white"|"gray"|"transparent"|"dark")을 저장 — 다른 스티커 타입은 NULL로 둠.
+ALTER TABLE sns_stickers
+  ADD COLUMN background_color VARCHAR(20) NULL COMMENT '코멘트 스티커 배경 프리셋 키 (white/gray/transparent/dark)';
+
+-- ─────────────────────────────────────────────
+-- V2.4 additions
+-- ─────────────────────────────────────────────
+
+-- 1) 이달의 목표(월별 완독 목표 권수) 저장용 신규 테이블.
+--    completed 권수는 저장하지 않고 user_library.status/completed_at 기준으로 매번 계산해서 응답한다.
+--    컬럼명은 year_month가 아니라 goal_month다 — YEAR_MONTH는 MySQL의 예약어(INTERVAL 단위)라
+--    따옴표 없이 컬럼명으로 쓰면 문법 오류가 난다 (실제로 겪음, 아래 "MySQL 예약어" 섹션 참고).
+CREATE TABLE reading_goals(
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  goal_month CHAR(7) NOT NULL COMMENT 'YYYY-MM',
+  target_books INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_reading_goals_user_month (user_id, goal_month),
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='사용자별 월간 완독 목표';
+
