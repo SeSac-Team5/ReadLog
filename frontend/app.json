@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "ReadLog",
+    "slug": "readlog",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "scheme": "readlog",
+    "platforms": ["ios", "android"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.readlog.dev"
+    },
+    "android": {
+      "package": "com.readlog.dev",
+      "adaptiveIcon": {
+        "backgroundColor": "#2D4A3E"
+      }
+    },
+    "assetBundlePatterns": ["**/*"],
+    "extra": {
+      "apiBaseUrl": "http://192.168.38.69:8000/api"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+# Frontend
+node_modules/
+.expo/
+*.log
+
+# Backend
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Env
+.env
+.env.*
+
+# IDE
+.vscode/*
+!.vscode/settings.json
+.DS_Store
