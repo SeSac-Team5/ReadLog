@@ -275,7 +275,7 @@ function LibraryCommentCard({ comment }: { comment: LibraryComment }) {
         <Image source={{ uri: comment.book.coverUrl }} style={commentStyles.cover} resizeMode="cover" />
       ) : (
         <View style={commentStyles.coverPlaceholder}>
-          <BookOpen size={14} color={colors.beigeLight} strokeWidth={1.5} />
+          <BookOpen size={16} color={colors.beigeLight} strokeWidth={1.5} />
         </View>
       )}
       <View style={commentStyles.contentCol}>
@@ -300,14 +300,14 @@ const commentStyles = StyleSheet.create({
     marginBottom: 12,
   },
   cover: {
-    width: 36,
-    height: 51,
+    width: 40,
+    height: 57,
     borderRadius: 6,
     backgroundColor: colors.beigeDim,
   },
   coverPlaceholder: {
-    width: 36,
-    height: 51,
+    width: 40,
+    height: 57,
     borderRadius: 6,
     backgroundColor: colors.deepGreen,
     alignItems: 'center',
