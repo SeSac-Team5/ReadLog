@@ -7,6 +7,7 @@ interface Props {
   progress: number;
   chapter: string;
   updatedAt: string;
+  memo?: string | null;
   deletedByOwner?: boolean;
   onEdit?: () => void;
   onDelete?: () => void;
@@ -15,6 +16,7 @@ interface Props {
 
 export default function MemberProgressBar({
   nickname, progress, chapter, updatedAt,
+  memo,
   deletedByOwner = false,
   onEdit, onDelete, onDismiss,
 }: Props) {
@@ -82,6 +84,7 @@ export default function MemberProgressBar({
       <View style={styles.barBg}>
         <View style={[styles.barFill, { width: `${Math.min(100, progress)}%`, backgroundColor: barColor }]} />
       </View>
+      {!!memo && <Text style={styles.memo}>{memo}</Text>}
     </View>
   );
 }
@@ -114,6 +117,7 @@ const styles = StyleSheet.create({
   percentDone: { color: '#16A34A' },
   barBg: { height: 6, backgroundColor: '#EDE7D8', borderRadius: 3, overflow: 'hidden' },
   barFill: { height: 6, borderRadius: 3 },
+  memo: { fontSize: 11, color: '#7A7060', lineHeight: 16 },
   actionRow: { flexDirection: 'row', gap: 4 },
   actionBtn: {
     paddingHorizontal: 8, paddingVertical: 3,

@@ -12,10 +12,6 @@ class Settings(BaseSettings):
     REDIS_PORT: int = 6379
     REDIS_PASSWORD: str = ""
 
-    JWT_SECRET: str = ""
-    JWT_ALGORITHM: str = "HS256"
-    JWT_EXPIRE_MINUTES: int = 1440
-
     APP_ENV: str = "development"
 
     @property

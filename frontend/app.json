@@ -18,16 +18,19 @@
       "package": "com.readlog.dev",
       "adaptiveIcon": {
         "backgroundColor": "#2D4A3E"
-      }
+      },
+      "softwareKeyboardLayoutMode": "resize"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
-    "extra": {
-      "apiBaseUrl": "http://192.168.38.69:8000/api"
-    },
     "plugins": [
       "@react-native-community/datetimepicker"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "6455e0b4-cbcf-4719-a81a-04960abbd236"
+      }
+    }
   }
 }
