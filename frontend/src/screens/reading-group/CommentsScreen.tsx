@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
-  FlatList, Keyboard, KeyboardAvoidingView, Platform, StyleSheet,
+  FlatList, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useHeaderHeight } from '@react-navigation/elements';
+import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useGroupComments } from '../../hooks/reading-group/useGroups';
 import SpoilerComment from '../../components/reading-group/SpoilerComment';
@@ -24,18 +24,6 @@ export default function CommentsScreen({ route }: Props) {
   const [sending, setSending] = useState(false);
 
   const insets = useSafeAreaInsets();
-  const headerHeight = useHeaderHeight();
-  // Android: adjustResize가 window를 키보드 위까지 자동 축소 → 리스너 불필요
-  // iOS: keyboardWillShow/Hide로 inputArea paddingBottom 전환
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
-
-  useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const show = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
-    const hide = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
-    return () => { show.remove(); hide.remove(); };
-  }, []);
 
   async function handleSend() {
     if (!content.trim()) return;
@@ -50,8 +38,8 @@ export default function CommentsScreen({ route }: Props) {
     }
   }
 
-  const listAndInput = (
-    <>
+  return (
+    <View style={styles.container}>
       <FlatList
         style={styles.list_container}
         data={comments}
@@ -66,50 +54,38 @@ export default function CommentsScreen({ route }: Props) {
           />
         )}
       />
-      <View style={[styles.inputArea, { paddingBottom: keyboardVisible ? 0 : insets.bottom }]}>
-        <View style={styles.inputInner}>
-          <TextInput
-            style={styles.textInput}
-            placeholder="댓글 입력..."
-            placeholderTextColor="#9E9E8A"
-            value={content}
-            onChangeText={setContent}
-            multiline
-          />
-          <View style={styles.inputActions}>
-            <TouchableOpacity onPress={() => setIsSpoiler(!isSpoiler)}>
-              <Text style={[styles.actionText, isSpoiler && { color: COLORS.deepGreen }]}>
-                ⚠ 스포일러{isSpoiler ? ' ON' : ''}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => {}}>
-              <Text style={styles.actionText}>원문 인용</Text>
-            </TouchableOpacity>
+      <KeyboardStickyView offset={{ closed: insets.bottom, opened: 0 }}>
+        <View style={styles.inputArea}>
+          <View style={styles.inputInner}>
+            <TextInput
+              style={styles.textInput}
+              placeholder="댓글 입력..."
+              placeholderTextColor="#9E9E8A"
+              value={content}
+              onChangeText={setContent}
+              multiline
+            />
+            <View style={styles.inputActions}>
+              <TouchableOpacity onPress={() => setIsSpoiler(!isSpoiler)}>
+                <Text style={[styles.actionText, isSpoiler && { color: COLORS.deepGreen }]}>
+                  ⚠ 스포일러{isSpoiler ? ' ON' : ''}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => {}}>
+                <Text style={styles.actionText}>원문 인용</Text>
+              </TouchableOpacity>
+            </View>
           </View>
+          <TouchableOpacity
+            style={[styles.sendBtn, (!content.trim() || sending) && { opacity: 0.4 }]}
+            onPress={handleSend}
+            disabled={!content.trim() || sending}
+          >
+            <Text style={styles.sendIcon}>↑</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          style={[styles.sendBtn, (!content.trim() || sending) && { opacity: 0.4 }]}
-          onPress={handleSend}
-          disabled={!content.trim() || sending}
-        >
-          <Text style={styles.sendIcon}>↑</Text>
-        </TouchableOpacity>
-      </View>
-    </>
-  );
-
-  if (Platform.OS === 'android') {
-    return <View style={styles.container}>{listAndInput}</View>;
-  }
-
-  return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior="padding"
-      keyboardVerticalOffset={headerHeight}
-    >
-      {listAndInput}
-    </KeyboardAvoidingView>
+      </KeyboardStickyView>
+    </View>
   );
 }
 
