@@ -22,6 +22,7 @@ def list_my_groups(
         count = group_service.member_count(db, g.id)
         r = GroupResponse.model_validate(g)
         r.member_count = count
+        r.book_cover_url, r.book_page_count = group_service.get_book_meta(db, g.book_id)
         result.append(r)
     return result
 
@@ -35,6 +36,7 @@ def create_group(
     group = group_service.create_group(db, current_user.id, data)
     r = GroupResponse.model_validate(group)
     r.member_count = 1
+    r.book_cover_url, r.book_page_count = group_service.get_book_meta(db, group.book_id)
     return r
 
 
@@ -47,6 +49,7 @@ def get_group(
     group = group_service.get_group(db, group_id)
     r = GroupResponse.model_validate(group)
     r.member_count = group_service.member_count(db, group_id)
+    r.book_cover_url, r.book_page_count = group_service.get_book_meta(db, group.book_id)
     return r
 
 
@@ -60,6 +63,7 @@ def update_group(
     group = group_service.update_group(db, group_id, current_user.id, data)
     r = GroupResponse.model_validate(group)
     r.member_count = group_service.member_count(db, group_id)
+    r.book_cover_url, r.book_page_count = group_service.get_book_meta(db, group.book_id)
     return r
 
 

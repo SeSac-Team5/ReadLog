@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
-  Alert, Image, Platform, ScrollView, StyleSheet, Text,
-  TouchableOpacity, View,
+  Alert, FlatList, Image, Platform, ScrollView, StyleSheet, Text,
+  TextInput, TouchableOpacity, View,
 } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { TextInput } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as api from '../../api/reading-group';
 import { COLORS } from '../../constants/theme';
@@ -12,7 +11,9 @@ import type { SelectedLibraryBook } from './SelectLibraryBookScreen';
 
 type Props = NativeStackScreenProps<any, 'CreateGroup'>;
 
-const MAX_MEMBERS = [4, 6, 8, 10, 12];
+const MIN_MEMBER = 2;
+const MAX_MEMBER = 20;
+const MEMBER_OPTIONS = Array.from({ length: MAX_MEMBER - MIN_MEMBER + 1 }, (_, i) => i + MIN_MEMBER);
 
 function toDateString(d: Date): string {
   return d.toISOString().slice(0, 10);
@@ -28,11 +29,48 @@ export default function CreateGroupScreen({ navigation }: Props) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [maxMember, setMaxMember] = useState(8);
+  const [maxMemberText, setMaxMemberText] = useState('8');
+  const memberListRef = useRef<FlatList>(null);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [pickerTarget, setPickerTarget] = useState<'start' | 'end' | null>(null);
   const [selectedBook, setSelectedBook] = useState<SelectedLibraryBook | null>(null);
   const [loading, setLoading] = useState(false);
+
+  function selectMember(n: number) {
+    setMaxMember(n);
+    setMaxMemberText(String(n));
+    const idx = MEMBER_OPTIONS.indexOf(n);
+    if (idx !== -1) {
+      memberListRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.5 });
+    }
+  }
+
+  function onMemberTextChange(text: string) {
+    setMaxMemberText(text);
+    const n = parseInt(text, 10);
+    if (!isNaN(n) && n >= MIN_MEMBER && n <= MAX_MEMBER) {
+      setMaxMember(n);
+      const idx = MEMBER_OPTIONS.indexOf(n);
+      if (idx !== -1) {
+        memberListRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.5 });
+      }
+    }
+  }
+
+  function onMemberTextBlur() {
+    const n = parseInt(maxMemberText, 10);
+    if (isNaN(n) || n < MIN_MEMBER) {
+      setMaxMember(MIN_MEMBER);
+      setMaxMemberText(String(MIN_MEMBER));
+    } else if (n > MAX_MEMBER) {
+      setMaxMember(MAX_MEMBER);
+      setMaxMemberText(String(MAX_MEMBER));
+    } else {
+      setMaxMember(n);
+      setMaxMemberText(String(n));
+    }
+  }
 
   function openBookSearch() {
     navigation.navigate('SelectLibraryBook', {
@@ -131,18 +169,36 @@ export default function CreateGroupScreen({ navigation }: Props) {
 
       <View style={styles.field}>
         <Text style={styles.label}>최대 인원</Text>
-        <View style={styles.chipRow}>
-          {MAX_MEMBERS.map(n => (
+        <FlatList
+          ref={memberListRef}
+          data={MEMBER_OPTIONS}
+          horizontal
+          keyExtractor={item => String(item)}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.memberScrollContent}
+          getItemLayout={(_, index) => ({ length: 48, offset: 48 * index, index })}
+          renderItem={({ item }) => (
             <TouchableOpacity
-              key={n}
-              style={[styles.chip, maxMember === n && styles.chipActive]}
-              onPress={() => setMaxMember(n)}
+              style={[styles.memberChip, maxMember === item && styles.memberChipActive]}
+              onPress={() => selectMember(item)}
             >
-              <Text style={[styles.chipText, maxMember === n && styles.chipTextActive]}>
-                {n}명
+              <Text style={[styles.memberChipText, maxMember === item && styles.memberChipTextActive]}>
+                {item}
               </Text>
             </TouchableOpacity>
-          ))}
+          )}
+        />
+        <View style={styles.memberInputRow}>
+          <TextInput
+            style={styles.memberInput}
+            value={maxMemberText}
+            onChangeText={onMemberTextChange}
+            onBlur={onMemberTextBlur}
+            keyboardType="number-pad"
+            maxLength={2}
+            selectTextOnFocus
+          />
+          <Text style={styles.memberInputUnit}>명 (최대 {MAX_MEMBER}명)</Text>
         </View>
       </View>
 
@@ -245,18 +301,39 @@ const styles = StyleSheet.create({
   },
   dateBtnText: { fontSize: 14, color: '#1C1A16' },
   datePlaceholder: { color: '#9E9E8A' },
-  chipRow: { flexDirection: 'row', gap: 8 },
-  chip: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 12,
+  memberScrollContent: { paddingVertical: 4, gap: 8 },
+  memberChip: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: '#DDD7CB',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  chipActive: { backgroundColor: COLORS.deepGreen, borderColor: COLORS.deepGreen },
-  chipText: { fontSize: 12, fontWeight: '500', color: '#9E9E8A' },
-  chipTextActive: { color: COLORS.beigeLight },
+  memberChipActive: { backgroundColor: COLORS.deepGreen, borderColor: COLORS.deepGreen },
+  memberChipText: { fontSize: 13, fontWeight: '500', color: '#9E9E8A' },
+  memberChipTextActive: { color: COLORS.beigeLight },
+  memberInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 10,
+  },
+  memberInput: {
+    width: 64,
+    backgroundColor: COLORS.beigeDark,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1C1A16',
+    borderWidth: 1,
+    borderColor: COLORS.deepGreen,
+    textAlign: 'center',
+  },
+  memberInputUnit: { fontSize: 13, color: '#7A7060' },
   bookAddBtn: {
     borderWidth: 2,
     borderStyle: 'dashed',

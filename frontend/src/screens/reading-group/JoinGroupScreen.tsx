@@ -19,8 +19,11 @@ export default function JoinGroupScreen({ navigation }: Props) {
     }
     setLoading(true);
     try {
-      const member = await api.joinGroup(0, code.trim()); // groupId는 서버에서 code로 resolves
-      navigation.replace('GroupHome', { groupId: member.group_id });
+      const result = await api.joinGroup(0, code.trim()); // groupId는 서버에서 code로 resolves
+      navigation.replace('GroupHome', {
+        groupId: result.group_id,
+        bookAdded: result.book_added || undefined,
+      });
     } catch (e: any) {
       Alert.alert(e?.response?.data?.detail ?? '유효하지 않은 코드입니다.');
     } finally {
