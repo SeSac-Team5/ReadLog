@@ -31,6 +31,7 @@ export interface UserLibraryItem {
   rating?: number | null;
   startedAt?: string | null;
   completedAt?: string | null;
+  updatedAt: string;
 }
 
 export interface MonthlyGoal {

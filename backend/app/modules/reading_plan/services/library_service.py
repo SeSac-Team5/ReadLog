@@ -33,6 +33,7 @@ def to_library_item_response(entry: UserLibrary) -> UserLibraryItem:
         rating=float(entry.rating) if entry.rating is not None else None,
         started_at=entry.started_at,
         completed_at=entry.completed_at,
+        updated_at=entry.updated_at,
     )
 
 

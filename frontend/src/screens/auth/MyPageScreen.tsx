@@ -1,8 +1,7 @@
 import { useCallback, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import {
-  Bell,
   BookOpen,
   ChevronRight,
   Lock,
@@ -17,7 +16,9 @@ import { colors } from '../../constants/theme';
 import { useAuth } from '../../store/auth/AuthContext';
 import { useLibraryComments } from '../../hooks/reading-plan/useLibraryComments';
 import { useLibrary } from '../../store/reading-plan/libraryStore';
+import { useMyGroups, useMyLatestGroupProgress } from '../../hooks/reading-group/useGroups';
 import type { LibraryComment, UserLibraryItem } from '../../types/reading-plan/book';
+import type { ReadingGroup } from '../../types/reading-group';
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -30,7 +31,7 @@ type ActivityTabId = 'records' | 'reviews' | 'comments' | 'groups';
 
 const ACTIVITY_TABS: { id: ActivityTabId; label: string; icon: typeof BookOpen; emptyText: string }[] = [
   { id: 'records', label: '독서기록', icon: BookOpen, emptyText: '아직 등록한 독서기록이 없어요.' },
-  { id: 'reviews', label: '한줄평', icon: MessageSquareText, emptyText: '작성한 한줄평이 없어요.' },
+  { id: 'reviews', label: '내 코멘트', icon: MessageSquareText, emptyText: '작성한 코멘트가 없어요.' },
   { id: 'groups', label: '독서그룹 활동', icon: Users, emptyText: '참여 중인 독서그룹 활동이 없어요.' },
   { id: 'comments', label: '댓글', icon: MessageCircle, emptyText: '작성한 댓글이 없어요.' },
 ];
@@ -39,17 +40,18 @@ export function MyPageScreen({
   onNavigateEditProfile,
   onNavigateChangePassword,
   onNavigateDeleteAccount,
-  onNavigateNotificationSettings,
   onOpenReadingRecord,
+  onOpenGroupActivity,
 }: {
   onNavigateEditProfile: () => void;
   onNavigateChangePassword: () => void;
   onNavigateDeleteAccount: () => void;
-  onNavigateNotificationSettings: () => void;
   onOpenReadingRecord: (libraryItemId: string) => void;
+  onOpenGroupActivity: (groupId: number) => void;
 }) {
   const { user, logout } = useAuth();
   const { items: libraryItems, loadLibrary } = useLibrary();
+  const { groups, loading: isGroupsLoading, refresh: refreshGroups } = useMyGroups();
   const { comments, refetch: refetchComments } = useLibraryComments();
   const [activeTab, setActiveTab] = useState<ActivityTabId>('records');
 
@@ -57,13 +59,15 @@ export function MyPageScreen({
     useCallback(() => {
       loadLibrary();
       refetchComments();
-    }, [loadLibrary, refetchComments])
+      refreshGroups();
+    }, [loadLibrary, refetchComments, refreshGroups])
   );
 
   const handleTabPress = (tabId: ActivityTabId) => {
     setActiveTab(tabId);
     if (tabId === 'records') loadLibrary();
     if (tabId === 'reviews') refetchComments();
+    if (tabId === 'groups') refreshGroups();
   };
 
   if (!user) return null;
@@ -74,7 +78,8 @@ export function MyPageScreen({
   const showEmptyState =
     (activeTab === 'records' && readingRecords.length === 0) ||
     (activeTab === 'reviews' && comments.length === 0) ||
-    (activeTab !== 'records' && activeTab !== 'reviews');
+    (activeTab === 'groups' && groups.length === 0) ||
+    (activeTab !== 'records' && activeTab !== 'reviews' && activeTab !== 'groups');
 
   return (
     <View style={styles.container}>
@@ -125,7 +130,11 @@ export function MyPageScreen({
       </ScrollView>
 
       <ScrollView style={styles.body}>
-        {showEmptyState ? (
+        {activeTab === 'groups' && isGroupsLoading && groups.length === 0 ? (
+          <View style={styles.tabContent}>
+            <ActivityIndicator color={colors.deepGreen} />
+          </View>
+        ) : showEmptyState ? (
           <View style={styles.tabContent}>
             <ActiveTabIcon size={28} color={colors.textMuted} strokeWidth={1.5} />
             <Text style={styles.tabEmptyText}>{activeTabInfo.emptyText}</Text>
@@ -147,7 +156,7 @@ export function MyPageScreen({
               ))}
             </ScrollView>
           </View>
-        ) : (
+        ) : activeTab === 'reviews' ? (
           <View style={styles.recordListWrapper}>
             <ScrollView
               style={styles.recordListScroll}
@@ -160,6 +169,24 @@ export function MyPageScreen({
               ))}
             </ScrollView>
           </View>
+        ) : (
+          <View style={styles.recordListWrapper}>
+            <ScrollView
+              style={styles.recordListScroll}
+              contentContainerStyle={styles.recordListContent}
+              nestedScrollEnabled
+              showsVerticalScrollIndicator
+            >
+              {groups.map((group) => (
+                <GroupActivityCard
+                  key={group.id}
+                  group={group}
+                  currentUserId={user.id}
+                  onPress={() => onOpenGroupActivity(group.id)}
+                />
+              ))}
+            </ScrollView>
+          </View>
         )}
 
         <View style={styles.menu}>
@@ -167,14 +194,6 @@ export function MyPageScreen({
             <View style={styles.menuItemLeft}>
               <Lock size={16} color={colors.textMuted} />
               <Text style={styles.menuItemLabel}>비밀번호 변경</Text>
-            </View>
-            <ChevronRight size={14} color={colors.textMuted} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem} onPress={onNavigateNotificationSettings}>
-            <View style={styles.menuItemLeft}>
-              <Bell size={16} color={colors.textMuted} />
-              <Text style={styles.menuItemLabel}>알림 설정</Text>
             </View>
             <ChevronRight size={14} color={colors.textMuted} />
           </TouchableOpacity>
@@ -237,31 +256,66 @@ function ReadingRecordCard({
                 {item.book.author}
               </Text>
             </View>
-            <View style={recordStyles.percentBlock}>
-              <Text style={recordStyles.percentLabel}>읽은 페이지</Text>
-              <Text style={[recordStyles.percentValue, { color: accentColor }]}>{percent}%</Text>
-            </View>
+            <Text style={[recordStyles.percentValue, { color: accentColor }]}>{percent}%</Text>
           </View>
 
           <View style={recordStyles.track}>
             <View style={[recordStyles.fill, { width: `${percent}%`, backgroundColor: accentColor }]} />
           </View>
 
-          <View style={recordStyles.pageRow}>
-            <Text style={recordStyles.pageMuted}>0p</Text>
-            <Text style={recordStyles.pageMuted}>{pageLabel}</Text>
+          <Text style={recordStyles.pageMuted}>{pageLabel}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function GroupActivityCard({
+  group,
+  currentUserId,
+  onPress,
+}: {
+  group: ReadingGroup;
+  currentUserId: number;
+  onPress: () => void;
+}) {
+  const myPercent = useMyLatestGroupProgress(group.id, currentUserId);
+  const percent = myPercent ?? 0;
+  const daysLeft = group.end_date
+    ? Math.ceil((new Date(group.end_date).getTime() - Date.now()) / 86_400_000)
+    : null;
+  const ddayLabel =
+    daysLeft !== null ? `D${daysLeft >= 0 ? `-${daysLeft}` : `+${Math.abs(daysLeft)}`}` : '기간 없음';
+
+  return (
+    <TouchableOpacity style={recordStyles.card} onPress={onPress} activeOpacity={0.85}>
+      <View style={recordStyles.mainRow}>
+        <View style={recordStyles.coverPlaceholder}>
+          <Users size={20} color={colors.beigeLight} strokeWidth={1.5} />
+        </View>
+
+        <View style={recordStyles.contentCol}>
+          <View style={recordStyles.titleRow}>
+            <View style={recordStyles.titleBlock}>
+              <Text style={recordStyles.title} numberOfLines={1}>
+                {group.name}
+              </Text>
+              <Text style={recordStyles.author} numberOfLines={1}>
+                멤버 {group.member_count}/{group.max_member}명
+              </Text>
+            </View>
+            <Text style={[recordStyles.percentValue, { color: colors.deepGreen }]}>{percent}%</Text>
           </View>
 
-          <View style={recordStyles.statRow}>
-            <View style={recordStyles.statBox}>
-              <Text style={[recordStyles.statValue, { color: accentColor }]}>{percent}%</Text>
-              <Text style={recordStyles.statLabel}>진행률</Text>
-            </View>
-            <View style={recordStyles.statBox}>
-              <Text style={recordStyles.statValue}>{item.currentPage}p</Text>
-              <Text style={recordStyles.statLabel}>현재 페이지</Text>
-            </View>
+          <View style={recordStyles.track}>
+            <View
+              style={[recordStyles.fill, { width: `${percent}%`, backgroundColor: colors.deepGreen }]}
+            />
           </View>
+
+          <Text style={recordStyles.pageMuted}>
+            {ddayLabel} · {myPercent !== null ? '진도 공유함' : '진도 공유 없음'}
+          </Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -387,14 +441,6 @@ const recordStyles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: 2,
   },
-  percentBlock: {
-    alignItems: 'flex-end',
-  },
-  percentLabel: {
-    fontSize: 10,
-    color: colors.textMuted,
-    marginBottom: 2,
-  },
   percentValue: {
     fontSize: 15,
     fontWeight: '700',
@@ -410,36 +456,8 @@ const recordStyles = StyleSheet.create({
     height: '100%',
     borderRadius: 999,
   },
-  pageRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
   pageMuted: {
     fontSize: 11,
-    color: colors.textMuted,
-  },
-  statRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  statBox: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'center',
-    gap: 4,
-    paddingVertical: 6,
-    borderRadius: 10,
-    backgroundColor: colors.beigeDim,
-  },
-  statValue: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  statLabel: {
-    fontSize: 10,
     color: colors.textMuted,
   },
 });
