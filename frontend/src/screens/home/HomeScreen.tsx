@@ -5,7 +5,7 @@ import { BookMarked, BookOpen, ChevronRight } from 'lucide-react-native';
 import { useLibrary } from '../../store/reading-plan/libraryStore';
 import { useAuth } from '../../store/auth/AuthContext';
 import { useMyGroups, useMyLatestGroupProgress } from '../../hooks/reading-group/useGroups';
-import { fetchComments } from '../../api/reading-group';
+import { fetchGroupProgress } from '../../api/reading-group';
 import { fetchProgressActivity } from '../../api/reading-plan/progress';
 import type { ReadingGroup } from '../../types/reading-group';
 import { colors } from '../../constants/theme';
@@ -60,26 +60,26 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
   const [streakDays, setStreakDays] = useState<number | null>(null);
 
-  // 연속독서 기록: "그날 읽은 곳에 코멘트를 남겼다" = 그날 완료로 치고, 오늘부터
-  // 거꾸로 하루씩 내려가며 코멘트를 남긴 날짜가 끊기지 않고 이어지는 일수를 센다.
-  // 두 가지를 다 센다 — (1) 개인 진도 입력 시 남기는 코멘트, (2) 모임 댓글.
-  // 그룹별 댓글 API만 있어서 내가 속한 모임 수만큼 호출한다.
+  // 연속독서 기록: "그날 진도를 새로 입력/공유했다" = 그날 완료로 치고, 오늘부터
+  // 거꾸로 하루씩 내려가며 진도를 남긴 날짜가 끊기지 않고 이어지는 일수를 센다.
+  // 두 가지를 다 센다 — (1) 내 서재에서 진도 입력, (2) 모임에서 진도 공유.
+  // 그룹별 진도 API만 있어서 내가 속한 모임 수만큼 호출한다.
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
     Promise.all([
       fetchProgressActivity().catch(() => []),
-      Promise.all(groups.map((g) => fetchComments(g.id).catch(() => []))),
+      Promise.all(groups.map((g) => fetchGroupProgress(g.id).catch(() => []))),
     ])
-      .then(([progressActivity, commentLists]) => {
+      .then(([progressActivity, groupProgressLists]) => {
         if (cancelled) return;
         const myDates = new Set<string>();
         progressActivity.forEach((entry) => {
           myDates.add(new Date(entry.recordedAt).toDateString());
         });
-        commentLists.flat().forEach((comment) => {
-          if (comment.user_id === user.id) {
-            myDates.add(new Date(comment.created_at).toDateString());
+        groupProgressLists.flat().forEach((progress) => {
+          if (progress.user_id === user.id) {
+            myDates.add(new Date(progress.created_at).toDateString());
           }
         });
 
