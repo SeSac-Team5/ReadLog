@@ -1,9 +1,8 @@
-import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import {
   Bell,
   BookOpen,
-  Bookmark,
   ChevronRight,
   Lock,
   MessageCircle,
@@ -15,6 +14,8 @@ import {
 } from 'lucide-react-native';
 import { colors } from '../../constants/theme';
 import { useAuth } from '../../store/auth/AuthContext';
+import { useLibrary } from '../../store/reading-plan/libraryStore';
+import type { UserLibraryItem } from '../../types/reading-plan/book';
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -23,14 +24,13 @@ function formatDate(iso: string) {
   return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`;
 }
 
-type ActivityTabId = 'records' | 'bookmarks' | 'reviews' | 'comments' | 'groups';
+type ActivityTabId = 'records' | 'reviews' | 'comments' | 'groups';
 
 const ACTIVITY_TABS: { id: ActivityTabId; label: string; icon: typeof BookOpen; emptyText: string }[] = [
   { id: 'records', label: '독서기록', icon: BookOpen, emptyText: '아직 등록한 독서기록이 없어요.' },
-  { id: 'bookmarks', label: '북마크', icon: Bookmark, emptyText: '저장한 북마크가 없어요.' },
   { id: 'reviews', label: '한줄평', icon: MessageSquareText, emptyText: '작성한 한줄평이 없어요.' },
-  { id: 'comments', label: '댓글', icon: MessageCircle, emptyText: '작성한 댓글이 없어요.' },
   { id: 'groups', label: '독서그룹 활동', icon: Users, emptyText: '참여 중인 독서그룹 활동이 없어요.' },
+  { id: 'comments', label: '댓글', icon: MessageCircle, emptyText: '작성한 댓글이 없어요.' },
 ];
 
 export function MyPageScreen({
@@ -38,18 +38,28 @@ export function MyPageScreen({
   onNavigateChangePassword,
   onNavigateDeleteAccount,
   onNavigateNotificationSettings,
+  onOpenReadingRecord,
 }: {
   onNavigateEditProfile: () => void;
   onNavigateChangePassword: () => void;
   onNavigateDeleteAccount: () => void;
   onNavigateNotificationSettings: () => void;
+  onOpenReadingRecord: (libraryItemId: string) => void;
 }) {
   const { user, logout } = useAuth();
+  const { items: libraryItems, loadLibrary } = useLibrary();
   const [activeTab, setActiveTab] = useState<ActivityTabId>('records');
+
+  useEffect(() => {
+    loadLibrary();
+  }, [loadLibrary]);
+
   if (!user) return null;
 
   const activeTabInfo = ACTIVITY_TABS.find((t) => t.id === activeTab)!;
   const ActiveTabIcon = activeTabInfo.icon;
+  const readingRecords = libraryItems.filter((item) => item.status !== 'WISH');
+  const showEmptyState = activeTab !== 'records' || readingRecords.length === 0;
 
   return (
     <View style={styles.container}>
@@ -61,7 +71,11 @@ export function MyPageScreen({
 
       <View style={styles.profileRow}>
         <View style={styles.avatar}>
-          <User size={28} color={colors.deepGreen} strokeWidth={1.5} />
+          {user.profile_image ? (
+            <Image source={{ uri: user.profile_image }} style={styles.avatarImage} />
+          ) : (
+            <User size={28} color={colors.deepGreen} strokeWidth={1.5} />
+          )}
         </View>
         <View style={styles.profileInfo}>
           <Text style={styles.nickname}>{user.nickname}</Text>
@@ -96,10 +110,29 @@ export function MyPageScreen({
       </ScrollView>
 
       <ScrollView style={styles.body}>
-        <View style={styles.tabContent}>
-          <ActiveTabIcon size={28} color={colors.textMuted} strokeWidth={1.5} />
-          <Text style={styles.tabEmptyText}>{activeTabInfo.emptyText}</Text>
-        </View>
+        {showEmptyState ? (
+          <View style={styles.tabContent}>
+            <ActiveTabIcon size={28} color={colors.textMuted} strokeWidth={1.5} />
+            <Text style={styles.tabEmptyText}>{activeTabInfo.emptyText}</Text>
+          </View>
+        ) : (
+          <View style={styles.recordListWrapper}>
+            <ScrollView
+              style={styles.recordListScroll}
+              contentContainerStyle={styles.recordListContent}
+              nestedScrollEnabled
+              showsVerticalScrollIndicator
+            >
+              {readingRecords.map((item) => (
+                <ReadingRecordCard
+                  key={item.id}
+                  item={item}
+                  onPress={() => onOpenReadingRecord(item.id)}
+                />
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         <View style={styles.menu}>
           <TouchableOpacity style={styles.menuItem} onPress={onNavigateChangePassword}>
@@ -137,6 +170,188 @@ export function MyPageScreen({
     </View>
   );
 }
+
+function ReadingRecordCard({
+  item,
+  onPress,
+}: {
+  item: UserLibraryItem;
+  onPress: () => void;
+}) {
+  const pageCount = item.book.pageCount ?? null;
+  const percent =
+    item.status === 'COMPLETED'
+      ? 100
+      : pageCount
+      ? Math.min(100, Math.round((item.currentPage / pageCount) * 100))
+      : 0;
+  const accentColor = item.status === 'COMPLETED' ? colors.success : colors.deepGreen;
+  const pageLabel = pageCount ? `${item.currentPage} / ${pageCount} 페이지` : `${item.currentPage}p 읽음`;
+
+  return (
+    <TouchableOpacity style={recordStyles.card} onPress={onPress} activeOpacity={0.85}>
+      <View style={recordStyles.mainRow}>
+        {item.book.coverUrl ? (
+          <Image source={{ uri: item.book.coverUrl }} style={recordStyles.cover} resizeMode="cover" />
+        ) : (
+          <View style={recordStyles.coverPlaceholder}>
+            <BookOpen size={20} color={colors.beigeLight} strokeWidth={1.5} />
+          </View>
+        )}
+
+        <View style={recordStyles.contentCol}>
+          <View style={recordStyles.titleRow}>
+            <View style={recordStyles.titleBlock}>
+              <Text style={recordStyles.title} numberOfLines={1}>
+                {item.book.title}
+              </Text>
+              <Text style={recordStyles.author} numberOfLines={1}>
+                {item.book.author}
+              </Text>
+            </View>
+            <View style={recordStyles.percentBlock}>
+              <Text style={recordStyles.percentLabel}>읽은 페이지</Text>
+              <Text style={[recordStyles.percentValue, { color: accentColor }]}>{percent}%</Text>
+            </View>
+          </View>
+
+          <View style={recordStyles.track}>
+            <View style={[recordStyles.fill, { width: `${percent}%`, backgroundColor: accentColor }]} />
+          </View>
+
+          <View style={recordStyles.pageRow}>
+            <Text style={recordStyles.pageMuted}>0p</Text>
+            <Text style={recordStyles.pageMuted}>{pageLabel}</Text>
+          </View>
+
+          <View style={recordStyles.statRow}>
+            <View style={recordStyles.statBox}>
+              <Text style={[recordStyles.statValue, { color: accentColor }]}>{percent}%</Text>
+              <Text style={recordStyles.statLabel}>진행률</Text>
+            </View>
+            <View style={recordStyles.statBox}>
+              <Text style={recordStyles.statValue}>{item.currentPage}p</Text>
+              <Text style={recordStyles.statLabel}>현재 페이지</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+const recordStyles = StyleSheet.create({
+  card: {
+    backgroundColor: colors.beigeLight,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 14,
+    marginBottom: 12,
+  },
+  mainRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 12,
+  },
+  cover: {
+    width: 64,
+    alignSelf: 'stretch',
+    minHeight: 80,
+    borderRadius: 8,
+    backgroundColor: colors.beigeDim,
+  },
+  coverPlaceholder: {
+    width: 64,
+    alignSelf: 'stretch',
+    minHeight: 80,
+    borderRadius: 8,
+    backgroundColor: colors.deepGreen,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contentCol: {
+    flex: 1,
+    minWidth: 0,
+    justifyContent: 'center',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  titleBlock: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 8,
+  },
+  title: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  author: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  percentBlock: {
+    alignItems: 'flex-end',
+  },
+  percentLabel: {
+    fontSize: 10,
+    color: colors.textMuted,
+    marginBottom: 2,
+  },
+  percentValue: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  track: {
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: colors.beigeDim,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  fill: {
+    height: '100%',
+    borderRadius: 999,
+  },
+  pageRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  pageMuted: {
+    fontSize: 11,
+    color: colors.textMuted,
+  },
+  statRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  statBox: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: colors.beigeDim,
+  },
+  statValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  statLabel: {
+    fontSize: 10,
+    color: colors.textMuted,
+  },
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -176,6 +391,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(45,74,62,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   profileInfo: {
     flex: 1,
@@ -223,6 +443,21 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     flexDirection: 'row',
+  },
+  recordListWrapper: {
+    marginHorizontal: 20,
+    marginTop: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.beigeDim,
+    overflow: 'hidden',
+  },
+  recordListScroll: {
+    maxHeight: 300,
+  },
+  recordListContent: {
+    padding: 12,
   },
   body: {
     flex: 1,

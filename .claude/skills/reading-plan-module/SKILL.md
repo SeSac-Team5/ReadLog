@@ -65,8 +65,6 @@ user_library (
   started_at, completed_at, created_at, updated_at
 )
 
-bookmarks (id, library_id, title, page, note, created_at)   -- 노트/인용 저장용, 진도 타임라인 아님
-
 reviews (id, user_id, book_id, rating, review, created_at, updated_at)   -- UNIQUE(user_id, book_id), user_library가 아닌 user/book 직접 참조
 
 sns_posts (id, user_id, book_id, image_url, content, created_at)
@@ -76,7 +74,7 @@ sns_stickers (id, post_id, emoji, x, y, scale, rotation)   -- ⚠ 아래 참고
 
 ### ⚠ 확인 필요 (CLAUDE.md §8, 구현 전 팀 확인)
 1. **`status`에 `WISH`가 존재** — 기획 확정사항("읽는 중/완독 2단계만")과 다름. 프론트에서 WISH 상태 진입 경로를 안 만들지, 아니면 실제로 "읽고 싶다" 기능을 살릴지 B가 결정하고 CLAUDE.md에 반영.
-2. **진도 타임라인 테이블 없음** — 독서 진도 입력 화면의 "이전 진도 기록 리스트"는 `user_library.current_page`(단일 값)로는 구현 불가. `bookmarks`는 용도가 다름(제목+메모 노트). 타임라인이 필수면 마이그레이션으로 `reading_progress_logs(id, library_id, page, percent, recorded_at)` 같은 테이블 추가를 제안할 것. 필수가 아니면 화면에서 "이전 기록" 섹션은 이번 스프린트에서 제외.
+2. ~~진도 타임라인 테이블 없음~~ → **해소됨**. `reading_progress_logs(id, library_id, page, percent, memo, recorded_at)` 테이블이 스키마 V2.1로 추가됨.
 3. **`sns_stickers`에 진도 오버레이 구분 컬럼 없음** — emoji 스티커와 "진도 시각화 오버레이"(원형게이지/진행바/텍스트배지)를 같은 테이블에 저장하려면 최소 `type ENUM('emoji','progress_ring','progress_bar','progress_badge')`, `visible BOOLEAN DEFAULT TRUE` 컬럼 추가가 필요해 보임. 추가 전까지는 오버레이를 프론트 상태로만 유지하고(저장 안 함) 게시 시 이미지에 합성해서 `sns_posts.image_url`만 저장하는 방식으로 우회 가능.
 
 ### 참고
