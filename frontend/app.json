@@ -25,7 +25,7 @@
       "**/*"
     ],
     "extra": {
-      "apiBaseUrl": "http://192.168.38.40:8000/api"
+      "apiBaseUrl": "http://192.168.38.141:8001/api"
     },
     "plugins": [
       "@react-native-community/datetimepicker",

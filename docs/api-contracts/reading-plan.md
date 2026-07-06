@@ -9,7 +9,7 @@
 | GET | `/books/search` | 알라딘 API 기반 책 검색 (backend 프록시) | query: `query`(필수), `page`(기본 1), `pageSize`(기본 20) | `{ items: BookSearchResult[], totalCount: number }` |
 | POST | `/library` | 검색 결과를 내 서재에 추가 (로컬 `books`에 없으면 upsert) | body: `{ book: BookInput, status: "WISH"\|"READING"\|"COMPLETED" }` | `UserLibraryItem` (201) |
 | GET | `/library` | 내 서재 목록 조회 | - | `{ items: UserLibraryItem[] }` |
-| DELETE | `/library/{id}` | 내 서재에서 책 삭제 (연쇄적으로 `reading_progress_logs`/`bookmarks`도 함께 삭제됨, `ON DELETE CASCADE`) | - | 204. 본인 소유가 아니거나 없으면 404 |
+| DELETE | `/library/{id}` | 내 서재에서 책 삭제 (연쇄적으로 `reading_progress_logs`도 함께 삭제됨, `ON DELETE CASCADE`) | - | 204. 본인 소유가 아니거나 없으면 404 |
 | GET | `/goals/current` | 이번 달 독서 목표 + 이번 달 완독 권수 조회 | - | `MonthlyGoalResponse` (목표를 아직 설정 안 했으면 `target: null`) |
 | PUT | `/goals/current` | 이번 달 독서 목표 설정/수정 (upsert) | body: `{ target: number }` (1 이상) | `MonthlyGoalResponse` |
 | POST | `/library/{id}/progress` | 진도 기록 추가 (`reading_progress_logs` insert + `user_library.current_page` 갱신) | body: `{ page?: number, percent?: number, memo?: string }` (`page`/`percent` 중 최소 1개 필수, 나머지는 서버가 `book.pageCount` 기준으로 환산) | `{ log: ProgressLogEntry, library: UserLibraryItem }` (201). 새 `page`가 기존 `current_page`보다 낮으면 400. `page`가 `book.pageCount` 이상이 되면 `status`가 자동으로 `COMPLETED`로 바뀌고 `completedAt`이 채워짐 |

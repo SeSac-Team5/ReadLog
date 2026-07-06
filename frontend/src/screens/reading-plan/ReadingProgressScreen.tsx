@@ -1,4 +1,3 @@
-import Slider from "@react-native-community/slider";
 import React, { useLayoutEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -27,8 +26,6 @@ const COLORS = {
   textSubtle: "#7A7060",
   border: "rgba(0, 0, 0, 0.08)",
 };
-
-type InputMethod = "page" | "percent";
 
 export default function ReadingProgressScreen({
   navigation,
@@ -76,17 +73,14 @@ function ReadingProgressScreenView({
   const { recordProgress } = useLibrary();
   const { logs, isLoading: isHistoryLoading, refetch } = useProgressLogs(libraryItem.id);
 
-  const [method, setMethod] = useState<InputMethod>("page");
   const [pageValue, setPageValue] = useState(libraryItem.currentPage);
-  const [percentValue, setPercentValue] = useState(
-    totalPages ? Math.round((libraryItem.currentPage / totalPages) * 100) : 0
-  );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const minPercent = totalPages
     ? Math.round((libraryItem.currentPage / totalPages) * 100)
     : 0;
+  const percentValue = totalPages ? Math.min(100, Math.round((pageValue / totalPages) * 100)) : 0;
 
   const handlePageChange = (text: string) => {
     const parsed = parseInt(text, 10);
@@ -94,29 +88,12 @@ function ReadingProgressScreenView({
       ? 0
       : Math.max(0, totalPages ? Math.min(parsed, totalPages) : parsed);
     setPageValue(clamped);
-    if (totalPages) {
-      setPercentValue(Math.min(100, Math.round((clamped / totalPages) * 100)));
-    }
-  };
-
-  const handlePercentChange = (value: number) => {
-    setPercentValue(value);
-    if (totalPages) {
-      setPageValue(Math.min(totalPages, Math.round((value / 100) * totalPages)));
-    }
   };
 
   const handleSave = async () => {
     if (isSaving) return;
 
-    const submittingPage =
-      method === "page"
-        ? pageValue
-        : totalPages
-        ? Math.round((percentValue / 100) * totalPages)
-        : null;
-
-    if (submittingPage !== null && submittingPage < libraryItem.currentPage) {
+    if (pageValue < libraryItem.currentPage) {
       setError(`현재 진도(p.${libraryItem.currentPage})보다 낮은 값으로는 저장할 수 없어요`);
       return;
     }
@@ -124,11 +101,7 @@ function ReadingProgressScreenView({
     setIsSaving(true);
     setError(null);
     try {
-      if (method === "page") {
-        await recordProgress(libraryItem.id, { page: pageValue });
-      } else {
-        await recordProgress(libraryItem.id, { percent: percentValue });
-      }
+      await recordProgress(libraryItem.id, { page: pageValue });
       await refetch();
     } catch (err) {
       setError(err instanceof Error ? err.message : "진도 저장에 실패했어요");
@@ -173,54 +146,22 @@ function ReadingProgressScreenView({
           </View>
         </View>
 
-        <Text style={styles.sectionLabel}>진도 입력 방식</Text>
-        <View style={styles.methodRow}>
-          {(["page", "percent"] as const).map((option) => {
-            const active = method === option;
-            return (
-              <TouchableOpacity
-                key={option}
-                style={[styles.methodButton, active && styles.methodButtonActive]}
-                onPress={() => setMethod(option)}
-              >
-                <Text style={[styles.methodButtonText, active && styles.methodButtonTextActive]}>
-                  {option === "page" ? "페이지 입력" : "퍼센트(%)"}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        <Text style={styles.sectionLabel}>진도 입력</Text>
         <Text style={styles.currentProgressHint}>
           현재 기록: p.{libraryItem.currentPage} ({minPercent}%) — 이보다 낮은 값은 저장할 수 없어요
         </Text>
 
-        {method === "page" ? (
-          <View style={styles.pageInputRow}>
-            <TextInput
-              style={styles.pageInput}
-              keyboardType="number-pad"
-              value={String(pageValue)}
-              onChangeText={handlePageChange}
-            />
-            <Text style={styles.pageInputSuffix}>
-              / {totalPages || "?"} 페이지
-            </Text>
-          </View>
-        ) : (
-          <View>
-            <Text style={styles.percentValueText}>{percentValue}%</Text>
-            <Slider
-              minimumValue={minPercent}
-              maximumValue={100}
-              step={1}
-              value={percentValue}
-              onValueChange={handlePercentChange}
-              minimumTrackTintColor={COLORS.deepGreen}
-              maximumTrackTintColor={COLORS.beigeDark}
-              thumbTintColor={COLORS.deepGreen}
-            />
-          </View>
-        )}
+        <View style={styles.pageInputRow}>
+          <TextInput
+            style={styles.pageInput}
+            keyboardType="number-pad"
+            value={String(pageValue)}
+            onChangeText={handlePageChange}
+          />
+          <Text style={styles.pageInputSuffix}>
+            / {totalPages || "?"} 페이지
+          </Text>
+        </View>
 
         <View style={styles.progressSection}>
           <View style={styles.progressLabelRow}>
@@ -384,35 +325,10 @@ const styles = StyleSheet.create({
     color: COLORS.textSubtle,
     marginBottom: 8,
   },
-  methodRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 8,
-  },
   currentProgressHint: {
     fontSize: 10,
     color: COLORS.textMuted,
     marginBottom: 12,
-  },
-  methodButton: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#DDD7CB",
-    alignItems: "center",
-  },
-  methodButtonActive: {
-    backgroundColor: COLORS.deepGreen,
-    borderColor: COLORS.deepGreen,
-  },
-  methodButtonText: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: COLORS.textMuted,
-  },
-  methodButtonTextActive: {
-    color: COLORS.beigeLight,
   },
   pageInputRow: {
     flexDirection: "row",
@@ -433,13 +349,6 @@ const styles = StyleSheet.create({
   pageInputSuffix: {
     fontSize: 13,
     color: COLORS.textMuted,
-  },
-  percentValueText: {
-    fontSize: 22,
-    fontWeight: "600",
-    color: COLORS.textPrimary,
-    textAlign: "center",
-    marginBottom: 4,
   },
   progressSection: {
     marginTop: 4,

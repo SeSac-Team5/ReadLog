@@ -15,7 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Share, { Social } from "react-native-share";
+import * as Sharing from "expo-sharing";
 import { captureRef } from "react-native-view-shot";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Circle, Text as SvgText } from "react-native-svg";
@@ -66,8 +66,6 @@ function commentBackgroundStyle(background?: CommentStickerBackground | null) {
 function commentTextColor(background?: CommentStickerBackground | null) {
   return background === "dark" ? "#FFFFFF" : COLORS.textPrimary;
 }
-
-const INSTAGRAM_APP_ID = process.env.EXPO_PUBLIC_INSTAGRAM_APP_ID ?? "";
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 const isProgressType = (type: StickerType) => type.startsWith("progress_");
@@ -322,21 +320,11 @@ function SNSShareScreenView({ libraryItem, onBack, onShared }: SNSShareScreenPro
         );
       }
 
-      if (INSTAGRAM_APP_ID) {
-        await Share.shareSingle({
-          social: Social.InstagramStories,
-          backgroundImage: shareFileUri,
-          appId: INSTAGRAM_APP_ID,
-        });
-      } else {
-        // No Facebook App ID configured yet — fall back to the generic share
-        // sheet (still lets the user pick Instagram manually) so this flow
-        // isn't blocked on Meta developer app approval during local testing.
-        await Share.open({
-          url: shareFileUri,
-          type: "image/jpeg",
-          failOnCancel: false,
-        });
+      // expo-sharing only opens the generic OS share sheet (no direct-to-app
+      // targeting like Instagram Stories), but that's the only path Expo Go
+      // can run without a custom dev client — user still picks Instagram manually.
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(shareFileUri, { mimeType: "image/jpeg" });
       }
 
       onShared?.();

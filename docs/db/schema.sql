@@ -1,16 +1,16 @@
--- ReadLog Schema V2
--- Enhanced schema with comments, indexes and audit fields
+-- ReadLog Schema (latest sync with current backend models and planning docs)
+-- Updated for auth soft-delete flow, reading-plan timeline/sticker features, and group schema changes
 CREATE DATABASE IF NOT EXISTS readlog CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE readlog;
 SET FOREIGN_KEY_CHECKS=0;
-DROP TABLE IF EXISTS comment_reactions,group_comments,reading_progress,chapter_goals,group_members,group_invites,reading_groups,sns_stickers,sns_posts,reviews,bookmarks,user_library,books,users;
+DROP TABLE IF EXISTS comment_reactions,group_comments,reading_progress,chapter_goals,group_members,group_invites,reading_groups,sns_stickers,sns_posts,reviews,user_library,books,users;
 SET FOREIGN_KEY_CHECKS=1;
 
 CREATE TABLE users(
  id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT 'PK',
- login_id VARCHAR(30) NOT NULL UNIQUE,
+ login_id VARCHAR(30) NULL UNIQUE,
  password VARCHAR(255) NOT NULL,
- nickname VARCHAR(30) NOT NULL UNIQUE,
+ nickname VARCHAR(30) NULL UNIQUE,
  profile_image VARCHAR(500),
  introduction VARCHAR(255),
  role ENUM('USER','ADMIN') DEFAULT 'USER',
@@ -41,19 +41,10 @@ CREATE TABLE user_library(
  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
  FOREIGN KEY(book_id) REFERENCES books(id) ON DELETE CASCADE
 );
-CREATE TABLE bookmarks(
- id BIGINT AUTO_INCREMENT PRIMARY KEY,
- library_id BIGINT NOT NULL,
- title VARCHAR(100),page INT,note VARCHAR(300),
- created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
- FOREIGN KEY(library_id) REFERENCES user_library(id) ON DELETE CASCADE
-);
-
-
 CREATE TABLE reviews(
  id BIGINT AUTO_INCREMENT PRIMARY KEY,
  user_id BIGINT,book_id BIGINT,rating DECIMAL(2,1),
- review VARCHAR(300),
+ review VARCHAR(300) NOT NULL,
  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
  UNIQUE(user_id,book_id),
@@ -69,7 +60,7 @@ CREATE TABLE sns_posts(
 );
 CREATE TABLE sns_stickers(
  id BIGINT AUTO_INCREMENT PRIMARY KEY,
- post_id BIGINT,emoji VARCHAR(20),x FLOAT,y FLOAT,scale FLOAT,rotation FLOAT,
+ post_id BIGINT,emoji VARCHAR(20),x FLOAT NOT NULL,y FLOAT NOT NULL,scale FLOAT NOT NULL DEFAULT 1.0,rotation FLOAT NOT NULL DEFAULT 0.0,
  FOREIGN KEY(post_id) REFERENCES sns_posts(id) ON DELETE CASCADE
 );
 
@@ -77,7 +68,7 @@ CREATE TABLE sns_stickers(
 CREATE TABLE reading_groups(
  id BIGINT AUTO_INCREMENT PRIMARY KEY,
  owner_id BIGINT,book_id BIGINT,name VARCHAR(100),description VARCHAR(500),
- is_public BOOLEAN,max_member INT,invite_code VARCHAR(30) UNIQUE,
+ max_member INT,invite_code VARCHAR(30) UNIQUE,
  start_date DATE,end_date DATE,
  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
  FOREIGN KEY(owner_id) REFERENCES users(id),
@@ -229,4 +220,14 @@ CREATE TABLE user_genre_interests(
   UNIQUE KEY uq_user_genre (user_id, genre),
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='사용자 관심 장르';
+
+-- ─────────────────────────────────────────────
+-- V2.6 removals (마이페이지 통합 점검 — B)
+-- ─────────────────────────────────────────────
+
+-- 1) bookmarks 테이블 제거.
+--    마이페이지 활동 탭에서 "북마크"와 "독서기록"이 사실상 같은 방향성(내가 읽은/읽고 있는 책 기록)으로
+--    겹친다고 판단해 북마크를 별도 기능으로 유지하지 않기로 함. 백엔드에 이 테이블에 대응하는
+--    모델/스키마/라우터가 처음부터 구현된 적이 없어(V1 설계 잔재) 실질적으로 죽은 테이블이었음.
+DROP TABLE IF EXISTS bookmarks;
 

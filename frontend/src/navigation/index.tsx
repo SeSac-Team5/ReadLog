@@ -90,6 +90,9 @@ function MyPageWrapper({ navigation }: { navigation: any }) {
       onNavigateChangePassword={() => navigation.navigate('ChangePassword')}
       onNavigateDeleteAccount={() => navigation.navigate('DeleteAccount')}
       onNavigateNotificationSettings={() => navigation.navigate('NotificationSettings')}
+      onOpenReadingRecord={(libraryItemId) =>
+        navigation.navigate('LibraryTab', { screen: 'ReadingProgress', params: { libraryItemId } })
+      }
     />
   );
 }
