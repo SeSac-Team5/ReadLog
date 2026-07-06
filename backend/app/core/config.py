@@ -12,10 +12,6 @@ class Settings(BaseSettings):
     REDIS_PORT: int = 6379
     REDIS_PASSWORD: str = ""
 
-    JWT_SECRET: str = ""
-    JWT_ALGORITHM: str = "HS256"
-    JWT_EXPIRE_MINUTES: int = 1440
-
     APP_ENV: str = "development"
 
     ALADIN_API_KEY: str = ""  # reading_plan 모듈: 알라딘 도서 검색 API 키

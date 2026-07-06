@@ -143,7 +143,6 @@ function GroupStack() {
       <Stack.Screen name="GroupHome" component={GroupHomeScreen} options={{ title: '모임 홈' }} />
       <Stack.Screen name="Invite" component={InviteScreen} options={{ title: '멤버 초대' }} />
       <Stack.Screen name="ProgressShare" component={ProgressShareScreen} options={{ title: '진도 공유' }} />
-      <Stack.Screen name="Comments" component={CommentsScreen} options={{ title: '공유 책 댓글' }} />
       <Stack.Screen name="GroupSettings" component={GroupSettingsScreen} options={{ title: '모임 설정' }} />
     </Stack.Navigator>
   );
@@ -196,7 +195,14 @@ function RootNavigator() {
           <Stack.Screen name="FindPassword" component={FindPasswordWrapper} />
         </>
       ) : (
-        <Stack.Screen name="Main" component={MainTabs} />
+        <>
+          <Stack.Screen name="Main" component={MainTabs} />
+          <Stack.Screen
+            name="Comments"
+            component={CommentsScreen}
+            options={{ ...stackOptions, headerShown: true, title: '공유 책 댓글' }}
+          />
+        </>
       )}
     </Stack.Navigator>
   );

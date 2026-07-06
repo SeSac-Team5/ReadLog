@@ -17,18 +17,19 @@ export default function GroupHomeScreen({ navigation, route }: Props) {
   const { groupId } = route.params as { groupId: number };
   const { group, members, loading } = useGroupDetail(groupId);
   const { progressList, remove, dismiss } = useGroupProgress(groupId);
-  const { fetchGroup, fetchMembers } = useGroupStore();
+  const { fetchGroup, fetchMembers, fetchProgress } = useGroupStore();
   const { user } = useAuth();
   const [tab, setTab] = useState<Tab>('progress');
 
   const myRole = members.find(m => m.user_id === user?.id)?.role ?? 'MEMBER';
   const isOwner = myRole === 'OWNER';
 
-  // Settings/Comments에서 돌아올 때 최신 데이터 재조회
+  // 화면 포커스 시 최신 데이터 재조회 (진도 공유/수정 후 복귀 포함)
   useFocusEffect(
     React.useCallback(() => {
       fetchGroup(groupId);
       fetchMembers(groupId);
+      fetchProgress(groupId);
     }, [groupId])
   );
 
@@ -136,6 +137,7 @@ export default function GroupHomeScreen({ navigation, route }: Props) {
               progress={item.progress ?? 0}
               chapter={item.chapter ?? ''}
               updatedAt={item.created_at}
+              memo={item.memo}
               deletedByOwner={item.deleted_by_owner}
               // 본인 알림 → 지우기 버튼
               onDismiss={item.deleted_by_owner && isMyProgress

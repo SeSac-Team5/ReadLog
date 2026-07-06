@@ -26,7 +26,25 @@ def _get_progress(db: Session, group_id: int, progress_id: int) -> ReadingProgre
     return p
 
 
-def create_progress(db: Session, group_id: int, user_id: int, data: ProgressCreate) -> ReadingProgress:
+def _build_response(db: Session, record: ReadingProgress) -> ProgressResponse:
+    from app.modules.auth.models.user import User
+    user = db.query(User).filter(User.id == record.user_id).first()
+    return ProgressResponse(
+        id=record.id,
+        group_id=record.group_id,
+        user_id=record.user_id,
+        chapter=record.chapter,
+        page=record.page,
+        progress=record.progress,
+        bookmark_title=record.bookmark_title,
+        memo=record.memo,
+        created_at=record.created_at,
+        nickname=user.nickname if user else None,
+        deleted_by_owner=record.deleted_by_owner,
+    )
+
+
+def create_progress(db: Session, group_id: int, user_id: int, data: ProgressCreate) -> ProgressResponse:
     get_group(db, group_id)
     _assert_member(db, group_id, user_id)
 
@@ -42,10 +60,10 @@ def create_progress(db: Session, group_id: int, user_id: int, data: ProgressCrea
     db.add(record)
     db.commit()
     db.refresh(record)
-    return record
+    return _build_response(db, record)
 
 
-def update_progress(db: Session, group_id: int, progress_id: int, actor_id: int, data: ProgressUpdate) -> ReadingProgress:
+def update_progress(db: Session, group_id: int, progress_id: int, actor_id: int, data: ProgressUpdate) -> ProgressResponse:
     get_group(db, group_id)
     _assert_member(db, group_id, actor_id)
     record = _get_progress(db, group_id, progress_id)
@@ -60,7 +78,7 @@ def update_progress(db: Session, group_id: int, progress_id: int, actor_id: int,
 
     db.commit()
     db.refresh(record)
-    return record
+    return _build_response(db, record)
 
 
 def delete_progress(db: Session, group_id: int, progress_id: int, actor_id: int) -> None:

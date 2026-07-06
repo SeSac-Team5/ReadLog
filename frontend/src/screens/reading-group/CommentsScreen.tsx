@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import {
-  FlatList, StyleSheet,
+  FlatList, Platform, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useGroupComments } from '../../hooks/reading-group/useGroups';
 import SpoilerComment from '../../components/reading-group/SpoilerComment';
 import { useAuth } from '../../store/auth/AuthContext';
@@ -39,7 +39,11 @@ export default function CommentsScreen({ route }: Props) {
   }
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior="padding"
+      keyboardVerticalOffset={Platform.OS === 'android' ? insets.bottom : 0}
+    >
       <FlatList
         style={styles.list_container}
         data={comments}
@@ -54,38 +58,36 @@ export default function CommentsScreen({ route }: Props) {
           />
         )}
       />
-      <KeyboardStickyView offset={{ closed: insets.bottom, opened: 0 }}>
-        <View style={styles.inputArea}>
-          <View style={styles.inputInner}>
-            <TextInput
-              style={styles.textInput}
-              placeholder="댓글 입력..."
-              placeholderTextColor="#9E9E8A"
-              value={content}
-              onChangeText={setContent}
-              multiline
-            />
-            <View style={styles.inputActions}>
-              <TouchableOpacity onPress={() => setIsSpoiler(!isSpoiler)}>
-                <Text style={[styles.actionText, isSpoiler && { color: COLORS.deepGreen }]}>
-                  ⚠ 스포일러{isSpoiler ? ' ON' : ''}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => {}}>
-                <Text style={styles.actionText}>원문 인용</Text>
-              </TouchableOpacity>
-            </View>
+      <View style={[styles.inputArea, { paddingBottom: 12 + insets.bottom }]}>
+        <View style={styles.inputInner}>
+          <TextInput
+            style={styles.textInput}
+            placeholder="댓글 입력..."
+            placeholderTextColor="#9E9E8A"
+            value={content}
+            onChangeText={setContent}
+            multiline
+          />
+          <View style={styles.inputActions}>
+            <TouchableOpacity onPress={() => setIsSpoiler(!isSpoiler)}>
+              <Text style={[styles.actionText, isSpoiler && { color: COLORS.deepGreen }]}>
+                ⚠ 스포일러{isSpoiler ? ' ON' : ''}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => {}}>
+              <Text style={styles.actionText}>원문 인용</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            style={[styles.sendBtn, (!content.trim() || sending) && { opacity: 0.4 }]}
-            onPress={handleSend}
-            disabled={!content.trim() || sending}
-          >
-            <Text style={styles.sendIcon}>↑</Text>
-          </TouchableOpacity>
         </View>
-      </KeyboardStickyView>
-    </View>
+        <TouchableOpacity
+          style={[styles.sendBtn, (!content.trim() || sending) && { opacity: 0.4 }]}
+          onPress={handleSend}
+          disabled={!content.trim() || sending}
+        >
+          <Text style={styles.sendIcon}>↑</Text>
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
