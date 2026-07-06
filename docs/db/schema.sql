@@ -236,3 +236,31 @@ CREATE TABLE user_genre_interests(
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='사용자 관심 장르';
 
+-- ─────────────────────────────────────────────
+-- V2.7 additions
+-- ─────────────────────────────────────────────
+
+-- 1) 코멘트 스티커 기능 제거 — 코멘트는 SNS 공유 화면이 아니라 독서 진도 입력 화면에서
+--    저장 시 남기는 방식으로 대체됐다 (reading_progress_logs.memo, V2.1부터 이미 존재).
+--    sns_stickers.type ENUM에서 'comment'를 제거하고, comment 타입만 쓰던
+--    content/background_color 컬럼도 함께 제거한다.
+ALTER TABLE sns_stickers
+  DROP COLUMN content,
+  DROP COLUMN background_color,
+  MODIFY COLUMN type ENUM('emoji','book_cover','progress_ring','progress_bar','progress_badge')
+    NOT NULL DEFAULT 'emoji' COMMENT '스티커 종류';
+
+-- ─────────────────────────────────────────────
+-- V2.8 additions
+-- ─────────────────────────────────────────────
+
+-- 1) 코멘트 스티커 기능 부활 — 독서 진도 입력 화면에서 남긴 가장 최근 코멘트를
+--    SNS 공유 화면에서 스티커로 붙일 수 있게 해달라는 요청으로 V2.7에서 뺐던
+--    content/background_color 컬럼과 'comment' 타입을 다시 추가한다.
+--    배경 프리셋도 4종 → 5종(white/beige/gray/dark/transparent)으로 확장.
+ALTER TABLE sns_stickers
+  ADD COLUMN content VARCHAR(300) NULL COMMENT '코멘트 텍스트 (emoji/book_cover/progress_* 타입은 비움)',
+  ADD COLUMN background_color VARCHAR(20) NULL COMMENT '코멘트 스티커 배경 프리셋 키 (white/beige/gray/dark/transparent)',
+  MODIFY COLUMN type ENUM('emoji','comment','book_cover','progress_ring','progress_bar','progress_badge')
+    NOT NULL DEFAULT 'emoji' COMMENT '스티커 종류';
+

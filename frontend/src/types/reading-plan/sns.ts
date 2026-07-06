@@ -6,7 +6,7 @@ export type StickerType =
   | "progress_bar"
   | "progress_badge";
 
-export type CommentStickerBackground = "white" | "gray" | "transparent" | "dark";
+export type CommentStickerBackground = "white" | "beige" | "gray" | "dark" | "transparent";
 
 export interface Sticker {
   id: string;
