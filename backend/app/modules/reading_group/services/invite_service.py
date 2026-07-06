@@ -1,12 +1,16 @@
 import secrets
 import string
 from datetime import datetime, timedelta
+from typing import Optional
 
 from sqlalchemy.orm import Session
 
 from app.modules.reading_group.models.group import GroupInvite, GroupMember, MemberRole, ReadingGroup
 from app.modules.reading_group.services.group_service import get_group, member_count
 from app.common.exceptions import BadRequestException, ConflictException, NotFoundException
+from app.modules.reading_plan.models.book import Book
+from app.modules.reading_plan.models.user_library import UserLibrary
+from app.modules.reading_plan.models.enums import LibraryStatus
 
 
 def _gen_temp_code() -> str:
@@ -28,7 +32,7 @@ def create_temp_invite(db: Session, group_id: int, expires_hours: int) -> GroupI
     return invite
 
 
-def join_by_code(db: Session, user_id: int, code: str) -> GroupMember:
+def join_by_code(db: Session, user_id: int, code: str) -> tuple[GroupMember, bool, Optional[str]]:
     # 상시 코드로 조회
     group = db.query(ReadingGroup).filter(ReadingGroup.invite_code == code).first()
 
@@ -60,6 +64,26 @@ def join_by_code(db: Session, user_id: int, code: str) -> GroupMember:
 
     member = GroupMember(group_id=group.id, user_id=user_id, role=MemberRole.MEMBER)
     db.add(member)
+
+    # 모임 도서가 있으면 서재에 자동 추가
+    book_added = False
+    book_title: Optional[str] = None
+    if group.book_id:
+        book = db.query(Book).filter(Book.id == group.book_id).first()
+        if book:
+            already_in_library = db.query(UserLibrary).filter(
+                UserLibrary.user_id == user_id,
+                UserLibrary.book_id == group.book_id,
+            ).first()
+            if not already_in_library:
+                db.add(UserLibrary(
+                    user_id=user_id,
+                    book_id=group.book_id,
+                    status=LibraryStatus.READING,
+                ))
+                book_added = True
+                book_title = book.title
+
     db.commit()
     db.refresh(member)
-    return member
+    return member, book_added, book_title

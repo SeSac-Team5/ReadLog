@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Alert, FlatList, StyleSheet, Text, TouchableOpacity, View,
+  Alert, FlatList, Image, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
@@ -14,7 +14,7 @@ type Props = NativeStackScreenProps<any, 'GroupHome'>;
 type Tab = 'progress' | 'comments' | 'settings';
 
 export default function GroupHomeScreen({ navigation, route }: Props) {
-  const { groupId } = route.params as { groupId: number };
+  const { groupId, bookAdded } = route.params as { groupId: number; bookAdded?: boolean };
   const { group, members, loading } = useGroupDetail(groupId);
   const { progressList, remove, dismiss } = useGroupProgress(groupId);
   const { fetchGroup, fetchMembers, fetchProgress } = useGroupStore();
@@ -23,6 +23,13 @@ export default function GroupHomeScreen({ navigation, route }: Props) {
 
   const myRole = members.find(m => m.user_id === user?.id)?.role ?? 'MEMBER';
   const isOwner = myRole === 'OWNER';
+
+  // 모임 참가 직후 도서가 서재에 추가됐으면 알림 표시 (1회)
+  React.useEffect(() => {
+    if (bookAdded) {
+      Alert.alert('서재에 추가됨', '내 서재에 모임 도서가 추가되었습니다.');
+    }
+  }, []);
 
   // 화면 포커스 시 최신 데이터 재조회 (진도 공유/수정 후 복귀 포함)
   useFocusEffect(
@@ -66,7 +73,11 @@ export default function GroupHomeScreen({ navigation, route }: Props) {
       {/* 모임 헤더 */}
       <View style={styles.header}>
         <View style={{ flexDirection: 'row', gap: 16 }}>
-          <View style={styles.bookCover} />
+          {group.book_cover_url ? (
+            <Image source={{ uri: group.book_cover_url }} style={styles.bookCover} resizeMode="cover" />
+          ) : (
+            <View style={styles.bookCover} />
+          )}
           <View style={{ flex: 1 }}>
             <Text style={styles.bookTitle}>{group.name}</Text>
             <Text style={styles.bookSub}>{group.description ?? ''}</Text>

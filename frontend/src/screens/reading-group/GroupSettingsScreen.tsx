@@ -1,8 +1,12 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
-  Alert, ScrollView, StyleSheet, Text,
+  Alert, FlatList, ScrollView, StyleSheet, Text,
   TextInput, TouchableOpacity, View,
 } from 'react-native';
+
+const MIN_MEMBER = 2;
+const MAX_MEMBER = 20;
+const MEMBER_OPTIONS = Array.from({ length: MAX_MEMBER - MIN_MEMBER + 1 }, (_, i) => i + MIN_MEMBER);
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as api from '../../api/reading-group';
 import { useGroupStore } from '../../store/reading-group/groupStore';
@@ -31,13 +35,51 @@ export default function GroupSettingsScreen({ navigation, route }: Props) {
   const isOwner = myRole === 'OWNER';
 
   const [name, setName] = useState(group?.name ?? '');
+  const [maxMember, setMaxMember] = useState(group?.max_member ?? 8);
+  const [maxMemberText, setMaxMemberText] = useState(String(group?.max_member ?? 8));
+  const memberListRef = useRef<FlatList>(null);
   const [saving, setSaving] = useState(false);
+
+  function selectMember(n: number) {
+    setMaxMember(n);
+    setMaxMemberText(String(n));
+    const idx = MEMBER_OPTIONS.indexOf(n);
+    if (idx !== -1) {
+      memberListRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.5 });
+    }
+  }
+
+  function onMemberTextChange(text: string) {
+    setMaxMemberText(text);
+    const n = parseInt(text, 10);
+    if (!isNaN(n) && n >= MIN_MEMBER && n <= MAX_MEMBER) {
+      setMaxMember(n);
+      const idx = MEMBER_OPTIONS.indexOf(n);
+      if (idx !== -1) {
+        memberListRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.5 });
+      }
+    }
+  }
+
+  function onMemberTextBlur() {
+    const n = parseInt(maxMemberText, 10);
+    if (isNaN(n) || n < MIN_MEMBER) {
+      setMaxMember(MIN_MEMBER);
+      setMaxMemberText(String(MIN_MEMBER));
+    } else if (n > MAX_MEMBER) {
+      setMaxMember(MAX_MEMBER);
+      setMaxMemberText(String(MAX_MEMBER));
+    } else {
+      setMaxMember(n);
+      setMaxMemberText(String(n));
+    }
+  }
 
   async function handleSave() {
     if (!name.trim()) { Alert.alert('모임명을 입력해주세요.'); return; }
     setSaving(true);
     try {
-      await api.updateGroup(groupId, { name: name.trim() });
+      await api.updateGroup(groupId, { name: name.trim(), max_member: maxMember });
       Alert.alert('저장되었습니다.');
     } catch {
       Alert.alert('저장에 실패했습니다.');
@@ -140,6 +182,41 @@ export default function GroupSettingsScreen({ navigation, route }: Props) {
         </View>
       </View>
 
+      <View style={[styles.field, { marginTop: 16 }]}>
+        <Text style={styles.fieldLabel}>최대 인원</Text>
+        <FlatList
+          ref={memberListRef}
+          data={MEMBER_OPTIONS}
+          horizontal
+          keyExtractor={item => String(item)}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.memberScrollContent}
+          getItemLayout={(_, index) => ({ length: 48, offset: 48 * index, index })}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={[styles.memberChip, maxMember === item && styles.memberChipActive]}
+              onPress={() => selectMember(item)}
+            >
+              <Text style={[styles.memberChipText, maxMember === item && styles.memberChipTextActive]}>
+                {item}
+              </Text>
+            </TouchableOpacity>
+          )}
+        />
+        <View style={styles.memberInputRow}>
+          <TextInput
+            style={styles.memberInput}
+            value={maxMemberText}
+            onChangeText={onMemberTextChange}
+            onBlur={onMemberTextBlur}
+            keyboardType="number-pad"
+            maxLength={2}
+            selectTextOnFocus
+          />
+          <Text style={styles.memberInputUnit}>명 (최대 {MAX_MEMBER}명)</Text>
+        </View>
+      </View>
+
       <TouchableOpacity
         style={[styles.saveBtn, saving && { opacity: 0.6 }]}
         onPress={handleSave}
@@ -215,6 +292,29 @@ const styles = StyleSheet.create({
     fontSize: 14, color: '#1C1A16', textAlign: 'right',
     flex: 1, marginLeft: 12,
   },
+  field: { gap: 6 },
+  fieldLabel: { fontSize: 12, fontWeight: '500', color: '#7A7060' },
+  memberScrollContent: { paddingVertical: 4, gap: 8 },
+  memberChip: {
+    width: 40, height: 40, borderRadius: 20,
+    borderWidth: 1, borderColor: '#DDD7CB',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  memberChipActive: { backgroundColor: COLORS.deepGreen, borderColor: COLORS.deepGreen },
+  memberChipText: { fontSize: 13, fontWeight: '500', color: '#9E9E8A' },
+  memberChipTextActive: { color: COLORS.beigeLight },
+  memberInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
+  memberInput: {
+    width: 64,
+    backgroundColor: COLORS.beigeDark,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 16, fontWeight: '600', color: '#1C1A16',
+    borderWidth: 1, borderColor: COLORS.deepGreen,
+    textAlign: 'center',
+  },
+  memberInputUnit: { fontSize: 13, color: '#7A7060' },
   saveBtn: {
     backgroundColor: COLORS.deepGreen,
     borderRadius: 12, paddingVertical: 12,

@@ -6,6 +6,7 @@ import type {
   GroupComment,
   GroupInvite,
   GroupMember,
+  JoinGroupResponse,
   ReadingGroup,
   ReadingProgress,
   ProgressPayload,
@@ -50,7 +51,7 @@ export const leaveGroup = (groupId: number): Promise<void> =>
 export const createTempInvite = (groupId: number, expiresHours = 72): Promise<GroupInvite> =>
   client.post(`${BASE}/${groupId}/invite`, { expires_hours: expiresHours }).then(r => r.data);
 
-export const joinGroup = (groupId: number, code: string): Promise<GroupMember> =>
+export const joinGroup = (groupId: number, code: string): Promise<JoinGroupResponse> =>
   client.post(`${BASE}/${groupId}/join`, { code }).then(r => r.data);
 
 // ── Chapter Goals ─────────────────────────────────────────────────────────

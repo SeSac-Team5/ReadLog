@@ -11,6 +11,7 @@ from app.modules.reading_group.models.group import (
 )
 from app.modules.reading_group.schemas.group import GroupCreate, GroupUpdate
 from app.common.exceptions import NotFoundException, ForbiddenException, ConflictException
+from app.modules.reading_plan.models.book import Book
 
 
 def _gen_invite_code(length: int = 9) -> str:
@@ -79,6 +80,16 @@ def delete_group(db: Session, group_id: int, actor_id: int) -> None:
 
 def member_count(db: Session, group_id: int) -> int:
     return db.query(func.count(GroupMember.id)).filter(GroupMember.group_id == group_id).scalar()
+
+
+def get_book_meta(db: Session, book_id: Optional[int]) -> tuple[Optional[str], Optional[int]]:
+    """Returns (cover_url, page_count) for the group's book. Single query."""
+    if book_id is None:
+        return None, None
+    book = db.query(Book).filter(Book.id == book_id).first()
+    if not book:
+        return None, None
+    return book.cover_url, book.page_count
 
 
 def get_member_role(db: Session, group_id: int, user_id: int) -> Optional[MemberRole]:

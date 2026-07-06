@@ -6,6 +6,8 @@ export interface ReadingGroup {
   id: number;
   owner_id: number;
   book_id: number | null;
+  book_cover_url: string | null;
+  book_page_count: number | null;
   name: string;
   description: string | null;
   max_member: number;
@@ -24,6 +26,11 @@ export interface GroupMember {
   joined_at: string;
   nickname: string | null;
   profile_image: string | null;
+}
+
+export interface JoinGroupResponse extends GroupMember {
+  book_added: boolean;
+  book_title: string | null;
 }
 
 export interface GroupInvite {

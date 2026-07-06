@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.common.deps import get_current_user
-from app.modules.reading_group.schemas.group import InviteCreate, InviteResponse, JoinGroupRequest, MemberResponse
+from app.modules.reading_group.schemas.group import InviteCreate, InviteResponse, JoinGroupRequest, JoinGroupResponse
 from app.modules.reading_group.services import invite_service
 
 router = APIRouter(prefix="/groups", tags=["reading-group"])
@@ -19,11 +19,15 @@ def create_temp_invite(
     return invite_service.create_temp_invite(db, group_id, data.expires_hours)
 
 
-@router.post("/{group_id}/join", response_model=MemberResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/{group_id}/join", response_model=JoinGroupResponse, status_code=status.HTTP_201_CREATED)
 def join_group(
     group_id: int,
     data: JoinGroupRequest,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    return invite_service.join_by_code(db, current_user.id, data.code)
+    member, book_added, book_title = invite_service.join_by_code(db, current_user.id, data.code)
+    r = JoinGroupResponse.model_validate(member)
+    r.book_added = book_added
+    r.book_title = book_title
+    return r

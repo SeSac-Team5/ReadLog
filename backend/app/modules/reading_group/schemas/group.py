@@ -10,7 +10,7 @@ class GroupCreate(BaseModel):
     book_id: Optional[int] = None
     name: str = Field(..., max_length=100)
     description: Optional[str] = Field(None, max_length=500)
-    max_member: int = Field(8, ge=2, le=50)
+    max_member: int = Field(8, ge=2, le=20)
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
 
@@ -18,7 +18,7 @@ class GroupCreate(BaseModel):
 class GroupUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
-    max_member: Optional[int] = Field(None, ge=2, le=50)
+    max_member: Optional[int] = Field(None, ge=2, le=20)
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
 
@@ -27,6 +27,8 @@ class GroupResponse(BaseModel):
     id: int
     owner_id: int
     book_id: Optional[int]
+    book_cover_url: Optional[str] = None
+    book_page_count: Optional[int] = None
     name: str
     description: Optional[str]
     max_member: int
@@ -59,6 +61,11 @@ class InviteResponse(BaseModel):
 
 class JoinGroupRequest(BaseModel):
     code: str = Field(..., description="상시 초대 코드 또는 임시 초대 코드")
+
+
+class JoinGroupResponse(MemberResponse):
+    book_added: bool = False
+    book_title: Optional[str] = None
 
 
 # ── Member ─────────────────────────────────────────────────────────────────
