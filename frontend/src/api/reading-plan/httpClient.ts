@@ -15,6 +15,7 @@ export async function requestJson<T>(
 ): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: options.method ?? "GET",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
   });

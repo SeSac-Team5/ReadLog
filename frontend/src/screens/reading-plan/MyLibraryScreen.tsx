@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Search } from "lucide-react-native";
 
 import { useLibrary } from "../../store/reading-plan/libraryStore";
 import type {
@@ -255,7 +256,7 @@ function MyLibraryScreenView({
               accessibilityRole="button"
               accessibilityLabel="책 검색"
             >
-              <Text style={styles.searchButtonIcon}>🔍</Text>
+              <Search size={18} color={COLORS.deepGreen} strokeWidth={2} />
             </TouchableOpacity>
           </>
         )}
@@ -534,9 +535,6 @@ const styles = StyleSheet.create({
   searchButton: {
     padding: 6,
     borderRadius: 999,
-  },
-  searchButtonIcon: {
-    fontSize: 18,
   },
   headerActionText: {
     fontSize: 14,

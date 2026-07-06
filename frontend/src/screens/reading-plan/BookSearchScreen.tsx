@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useLayoutEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -31,6 +31,10 @@ export default function BookSearchScreen({ navigation }: { navigation: any }) {
   const { items, addToLibrary } = useLibrary();
   const [addingIsbn, setAddingIsbn] = useState<string | null>(null);
 
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
   const addedIsbns = useMemo(
     () => new Set(items.map((item) => item.book.isbn13)),
     [items]
@@ -48,6 +52,14 @@ export default function BookSearchScreen({ navigation }: { navigation: any }) {
 
   return (
     <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={8}>
+          <Text style={styles.backIcon}>‹</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>책 검색</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+
       <View style={styles.searchBar}>
         <TextInput
           style={styles.searchInput}
@@ -154,6 +166,28 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: COLORS.beigeLight,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.border,
+  },
+  backIcon: {
+    fontSize: 24,
+    color: COLORS.textPrimary,
+    width: 24,
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: COLORS.textPrimary,
+  },
+  headerSpacer: {
+    width: 24,
   },
   searchBar: {
     flexDirection: "row",
