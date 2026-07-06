@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import {
-  FlatList, StyleSheet, Text, TouchableOpacity, View,
+  Alert, FlatList, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { useGroupDetail, useGroupProgress } from '../../hooks/reading-group/useGroups';
 import { useGroupStore } from '../../store/reading-group/groupStore';
+import { useAuth } from '../../store/auth/AuthContext';
 import MemberProgressBar from '../../components/reading-group/MemberProgressBar';
 import { COLORS } from '../../constants/theme';
 
@@ -15,9 +16,13 @@ type Tab = 'progress' | 'comments' | 'settings';
 export default function GroupHomeScreen({ navigation, route }: Props) {
   const { groupId } = route.params as { groupId: number };
   const { group, members, loading } = useGroupDetail(groupId);
-  const { progressList } = useGroupProgress(groupId);
+  const { progressList, remove, dismiss } = useGroupProgress(groupId);
   const { fetchGroup, fetchMembers } = useGroupStore();
+  const { user } = useAuth();
   const [tab, setTab] = useState<Tab>('progress');
+
+  const myRole = members.find(m => m.user_id === user?.id)?.role ?? 'MEMBER';
+  const isOwner = myRole === 'OWNER';
 
   // Settings/Comments에서 돌아올 때 최신 데이터 재조회
   useFocusEffect(
@@ -37,6 +42,23 @@ export default function GroupHomeScreen({ navigation, route }: Props) {
       return acc;
     }, {})
   );
+
+  function confirmDelete(progressId: number, nickname: string, isOwnProgress: boolean) {
+    const message = isOwnProgress
+      ? '본인의 진도를 삭제하시겠습니까?'
+      : `${nickname}님의 진도를 삭제하시겠습니까?\n해당 멤버에게 삭제 알림이 표시됩니다.`;
+    Alert.alert('진도 삭제', message, [
+      { text: '취소', style: 'cancel' },
+      { text: '삭제', style: 'destructive', onPress: () => remove(progressId) },
+    ]);
+  }
+
+  function confirmDismiss(progressId: number) {
+    Alert.alert('알림 지우기', '이 알림을 지우시겠습니까?', [
+      { text: '취소', style: 'cancel' },
+      { text: '지우기', onPress: () => dismiss(progressId) },
+    ]);
+  }
 
   return (
     <View style={styles.container}>
@@ -104,14 +126,40 @@ export default function GroupHomeScreen({ navigation, route }: Props) {
             </TouchableOpacity>
           </View>
         }
-        renderItem={({ item }) => (
-          <MemberProgressBar
-            nickname={item.nickname ?? `User ${item.user_id}`}
-            progress={item.progress ?? 0}
-            chapter={item.chapter ?? ''}
-            updatedAt={item.created_at}
-          />
-        )}
+        renderItem={({ item }) => {
+          const isMyProgress = item.user_id === user?.id;
+          const nickname = item.nickname ?? `User ${item.user_id}`;
+
+          return (
+            <MemberProgressBar
+              nickname={nickname}
+              progress={item.progress ?? 0}
+              chapter={item.chapter ?? ''}
+              updatedAt={item.created_at}
+              deletedByOwner={item.deleted_by_owner}
+              // 본인 알림 → 지우기 버튼
+              onDismiss={item.deleted_by_owner && isMyProgress
+                ? () => confirmDismiss(item.id)
+                : undefined}
+              // 본인 진도 → 수정 + 삭제
+              onEdit={!item.deleted_by_owner && isMyProgress
+                ? () => navigation.navigate('ProgressShare', {
+                    groupId,
+                    progressId: item.id,
+                    initialData: {
+                      chapter: item.chapter,
+                      page: item.page,
+                      progress: item.progress,
+                      memo: item.memo,
+                    },
+                  })
+                : undefined}
+              onDelete={!item.deleted_by_owner && (isMyProgress || isOwner)
+                ? () => confirmDelete(item.id, nickname, isMyProgress)
+                : undefined}
+            />
+          );
+        }}
       />
     </View>
   );

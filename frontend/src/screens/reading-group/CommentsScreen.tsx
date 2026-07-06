@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  FlatList, KeyboardAvoidingView, Platform, StyleSheet,
+  FlatList, Keyboard, KeyboardAvoidingView, Platform, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHeaderHeight } from '@react-navigation/elements';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useGroupComments } from '../../hooks/reading-group/useGroups';
-import { useKeyboardHeight } from '../../hooks/reading-group/useKeyboardHeight';
 import SpoilerComment from '../../components/reading-group/SpoilerComment';
 import { useAuth } from '../../store/auth/AuthContext';
 import { COLORS } from '../../constants/theme';
@@ -22,7 +23,19 @@ export default function CommentsScreen({ route }: Props) {
   const [quote, setQuote] = useState('');
   const [sending, setSending] = useState(false);
 
-  const kbHeight = useKeyboardHeight();
+  const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight();
+  // Android: adjustResize가 window를 키보드 위까지 자동 축소 → 리스너 불필요
+  // iOS: keyboardWillShow/Hide로 inputArea paddingBottom 전환
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   async function handleSend() {
     if (!content.trim()) return;
@@ -53,7 +66,7 @@ export default function CommentsScreen({ route }: Props) {
           />
         )}
       />
-      <View style={styles.inputArea}>
+      <View style={[styles.inputArea, { paddingBottom: keyboardVisible ? 0 : insets.bottom }]}>
         <View style={styles.inputInner}>
           <TextInput
             style={styles.textInput}
@@ -85,21 +98,15 @@ export default function CommentsScreen({ route }: Props) {
     </>
   );
 
-  // Android: 키보드 높이만큼 컨테이너 하단 패딩 → 입력창이 키보드 바로 위에 위치
   if (Platform.OS === 'android') {
-    return (
-      <View style={[styles.container, { paddingBottom: kbHeight }]}>
-        {listAndInput}
-      </View>
-    );
+    return <View style={styles.container}>{listAndInput}</View>;
   }
 
-  // iOS: KAV padding behavior 유지
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior="padding"
-      keyboardVerticalOffset={88}
+      keyboardVerticalOffset={headerHeight}
     >
       {listAndInput}
     </KeyboardAvoidingView>

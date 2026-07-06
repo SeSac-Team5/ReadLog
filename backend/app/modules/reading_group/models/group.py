@@ -9,6 +9,10 @@ import enum
 
 class MemberRole(str, enum.Enum):
     OWNER = "OWNER"
+    # [MANAGER 확장 포인트] 현재 미사용 role.
+    # promote_to_manager API(member_service.py), delegate 시 강등 로직(member_service.py)과 세트.
+    # 활성화 시: group_service.py의 _require_role 체크에 추가 + GroupSettingsScreen.tsx UI 구현 필요.
+    # 미사용 시: 이 항목 및 member_service.promote_to_manager, delegate 강등 로직 함께 제거 검토.
     MANAGER = "MANAGER"
     MEMBER = "MEMBER"
 
@@ -83,6 +87,8 @@ class ReadingProgress(Base):
     bookmark_title = Column(String(100))
     memo = Column(String(300))
     created_at = Column(DateTime, server_default=func.now())
+    deleted_by_owner = Column(Boolean, default=False, nullable=False)
+    dismissed_by_member = Column(Boolean, default=False, nullable=False)
 
     group = relationship("ReadingGroup", back_populates="progress_records")
     comments = relationship("GroupComment", back_populates="progress_record")

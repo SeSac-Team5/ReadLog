@@ -13,7 +13,11 @@ import type { MemberRole } from '../../types/reading-group';
 type Props = NativeStackScreenProps<any, 'GroupSettings'>;
 
 const ROLE_LABEL: Record<MemberRole, string> = {
-  OWNER: '방장', MANAGER: '매니저', MEMBER: '멤버',
+  OWNER: '방장',
+  // [MANAGER 확장 포인트] 현재 UI에서 MANAGER는 MEMBER와 동일하게 읽기 전용으로 처리됨.
+  // 활성화 시: isOwner 체크를 isOwnerOrManager로 확장하여 설정 편집 UI 노출 필요.
+  MANAGER: '매니저',
+  MEMBER: '멤버',
 };
 
 export default function GroupSettingsScreen({ navigation, route }: Props) {

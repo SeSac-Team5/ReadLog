@@ -59,7 +59,8 @@ def list_user_groups(db: Session, user_id: int) -> list[ReadingGroup]:
 
 def update_group(db: Session, group_id: int, actor_id: int, data: GroupUpdate) -> ReadingGroup:
     group = get_group(db, group_id)
-    _require_role(db, group_id, actor_id, {MemberRole.OWNER, MemberRole.MANAGER})
+    # [MANAGER 확장 포인트] MANAGER에게 모임 설정 편집 권한 부여 시 MemberRole.MANAGER 추가.
+    _require_role(db, group_id, actor_id, {MemberRole.OWNER})
 
     for field, value in data.model_dump(exclude_none=True).items():
         setattr(group, field, value)
@@ -97,7 +98,8 @@ def _require_role(db: Session, group_id: int, user_id: int, allowed: set[MemberR
 # ── Chapter Goals ──────────────────────────────────────────────────────────
 
 def add_chapter_goal(db: Session, group_id: int, actor_id: int, chapter_name: str, target_date: datetime) -> ChapterGoal:
-    _require_role(db, group_id, actor_id, {MemberRole.OWNER, MemberRole.MANAGER})
+    # [MANAGER 확장 포인트] MANAGER에게 챕터 목표 추가 권한 부여 시 MemberRole.MANAGER 추가.
+    _require_role(db, group_id, actor_id, {MemberRole.OWNER})
     goal = ChapterGoal(group_id=group_id, chapter_name=chapter_name, target_date=target_date)
     db.add(goal)
     db.commit()
@@ -109,7 +111,8 @@ def update_chapter_goal(db: Session, goal_id: int, actor_id: int, chapter_name: 
     goal = db.query(ChapterGoal).filter(ChapterGoal.id == goal_id).first()
     if not goal:
         raise NotFoundException("챕터 목표를 찾을 수 없습니다.")
-    _require_role(db, goal.group_id, actor_id, {MemberRole.OWNER, MemberRole.MANAGER})
+    # [MANAGER 확장 포인트] MANAGER에게 챕터 목표 수정 권한 부여 시 MemberRole.MANAGER 추가.
+    _require_role(db, goal.group_id, actor_id, {MemberRole.OWNER})
     if chapter_name:
         goal.chapter_name = chapter_name
     if target_date:

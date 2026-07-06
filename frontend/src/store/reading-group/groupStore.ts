@@ -17,6 +17,9 @@ interface GroupState {
   fetchProgress: (groupId: number) => Promise<void>;
   fetchComments: (groupId: number) => Promise<void>;
   shareProgress: (groupId: number, data: Parameters<typeof api.shareProgress>[1]) => Promise<void>;
+  updateProgress: (groupId: number, progressId: number, data: Parameters<typeof api.updateProgress>[2]) => Promise<void>;
+  deleteProgress: (groupId: number, progressId: number) => Promise<void>;
+  dismissProgressNotice: (groupId: number, progressId: number) => Promise<void>;
   createComment: (groupId: number, data: Parameters<typeof api.createComment>[1]) => Promise<void>;
   toggleReaction: (groupId: number, commentId: number, emoji: string) => Promise<void>;
   kickMember: (groupId: number, userId: number) => Promise<void>;
@@ -72,6 +75,21 @@ export const useGroupStore = create<GroupState>((set, get) => ({
   shareProgress: async (groupId, data) => {
     const record = await api.shareProgress(groupId, data);
     set(s => ({ progressList: [record, ...s.progressList] }));
+  },
+
+  updateProgress: async (groupId, progressId, data) => {
+    const updated = await api.updateProgress(groupId, progressId, data);
+    set(s => ({ progressList: s.progressList.map(p => p.id === progressId ? updated : p) }));
+  },
+
+  deleteProgress: async (groupId, progressId) => {
+    await api.deleteProgress(groupId, progressId);
+    set(s => ({ progressList: s.progressList.filter(p => p.id !== progressId) }));
+  },
+
+  dismissProgressNotice: async (groupId, progressId) => {
+    await api.dismissProgressNotice(groupId, progressId);
+    set(s => ({ progressList: s.progressList.filter(p => p.id !== progressId) }));
   },
 
   createComment: async (groupId, data) => {
