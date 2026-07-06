@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   Bell,
   BookOpen,
@@ -49,12 +50,21 @@ export function MyPageScreen({
 }) {
   const { user, logout } = useAuth();
   const { items: libraryItems, loadLibrary } = useLibrary();
-  const { comments } = useLibraryComments();
+  const { comments, refetch: refetchComments } = useLibraryComments();
   const [activeTab, setActiveTab] = useState<ActivityTabId>('records');
 
-  useEffect(() => {
-    loadLibrary();
-  }, [loadLibrary]);
+  useFocusEffect(
+    useCallback(() => {
+      loadLibrary();
+      refetchComments();
+    }, [loadLibrary, refetchComments])
+  );
+
+  const handleTabPress = (tabId: ActivityTabId) => {
+    setActiveTab(tabId);
+    if (tabId === 'records') loadLibrary();
+    if (tabId === 'reviews') refetchComments();
+  };
 
   if (!user) return null;
 
@@ -104,7 +114,7 @@ export function MyPageScreen({
             <TouchableOpacity
               key={tab.id}
               style={[styles.tabItem, activeTab === tab.id && styles.tabItemActive]}
-              onPress={() => setActiveTab(tab.id)}
+              onPress={() => handleTabPress(tab.id)}
             >
               <Text style={[styles.tabLabel, activeTab === tab.id && styles.tabLabelActive]}>
                 {tab.label}
@@ -265,7 +275,7 @@ function LibraryCommentCard({ comment }: { comment: LibraryComment }) {
         <Image source={{ uri: comment.book.coverUrl }} style={commentStyles.cover} resizeMode="cover" />
       ) : (
         <View style={commentStyles.coverPlaceholder}>
-          <BookOpen size={18} color={colors.beigeLight} strokeWidth={1.5} />
+          <BookOpen size={14} color={colors.beigeLight} strokeWidth={1.5} />
         </View>
       )}
       <View style={commentStyles.contentCol}>
@@ -290,15 +300,15 @@ const commentStyles = StyleSheet.create({
     marginBottom: 12,
   },
   cover: {
-    width: 48,
-    height: 68,
-    borderRadius: 8,
+    width: 36,
+    height: 51,
+    borderRadius: 6,
     backgroundColor: colors.beigeDim,
   },
   coverPlaceholder: {
-    width: 48,
-    height: 68,
-    borderRadius: 8,
+    width: 36,
+    height: 51,
+    borderRadius: 6,
     backgroundColor: colors.deepGreen,
     alignItems: 'center',
     justifyContent: 'center',
