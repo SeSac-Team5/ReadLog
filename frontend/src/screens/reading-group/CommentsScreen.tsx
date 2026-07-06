@@ -4,6 +4,7 @@ import {
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHeaderHeight } from '@react-navigation/elements';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useGroupComments } from '../../hooks/reading-group/useGroups';
@@ -24,6 +25,7 @@ export default function CommentsScreen({ route }: Props) {
   const [sending, setSending] = useState(false);
 
   const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight();
 
   async function handleSend() {
     if (!content.trim()) return;
@@ -42,7 +44,7 @@ export default function CommentsScreen({ route }: Props) {
     <KeyboardAvoidingView
       style={styles.container}
       behavior="padding"
-      keyboardVerticalOffset={Platform.OS === 'android' ? insets.bottom : 0}
+      keyboardVerticalOffset={Platform.OS === 'android' ? insets.bottom : headerHeight}
     >
       <FlatList
         style={styles.list_container}
