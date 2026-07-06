@@ -69,6 +69,15 @@ export const fetchGroupProgress = (groupId: number): Promise<ReadingProgress[]> 
 export const shareProgress = (groupId: number, data: ProgressPayload): Promise<ReadingProgress> =>
   client.post(`${BASE}/${groupId}/progress`, data).then(r => r.data);
 
+export const updateProgress = (groupId: number, progressId: number, data: ProgressPayload): Promise<ReadingProgress> =>
+  client.patch(`${BASE}/${groupId}/progress/${progressId}`, data).then(r => r.data);
+
+export const deleteProgress = (groupId: number, progressId: number): Promise<void> =>
+  client.delete(`${BASE}/${groupId}/progress/${progressId}`);
+
+export const dismissProgressNotice = (groupId: number, progressId: number): Promise<void> =>
+  client.delete(`${BASE}/${groupId}/progress/${progressId}/dismiss`);
+
 // ── Comments ──────────────────────────────────────────────────────────────
 
 export const fetchComments = (groupId: number): Promise<GroupComment[]> =>

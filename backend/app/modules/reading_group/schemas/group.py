@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone as _tz
 from typing import Optional
 from pydantic import BaseModel, Field, field_validator
 from app.modules.reading_group.models.group import MemberRole
@@ -119,6 +119,14 @@ class ProgressCreate(BaseModel):
         return v
 
 
+class ProgressUpdate(BaseModel):
+    chapter: Optional[str] = Field(None, max_length=100)
+    page: Optional[int] = Field(None, ge=0)
+    progress: Optional[float] = Field(None, ge=0, le=100)
+    bookmark_title: Optional[str] = Field(None, max_length=100)
+    memo: Optional[str] = Field(None, max_length=300)
+
+
 class ProgressResponse(BaseModel):
     id: int
     group_id: int
@@ -130,6 +138,14 @@ class ProgressResponse(BaseModel):
     memo: Optional[str]
     created_at: datetime
     nickname: Optional[str] = None
+    deleted_by_owner: bool = False
+
+    @field_validator('created_at', mode='before')
+    @classmethod
+    def ensure_utc(cls, v):
+        if isinstance(v, datetime) and v.tzinfo is None:
+            return v.replace(tzinfo=_tz.utc)
+        return v
 
     class Config:
         from_attributes = True

@@ -1,3 +1,5 @@
+// [MANAGER 확장 포인트] MANAGER는 현재 미사용. 활성화 시 GroupSettingsScreen.tsx의
+// isOwner 체크를 isOwnerOrManager로 확장하고 group_service.py _require_role에도 추가.
 export type MemberRole = 'OWNER' | 'MANAGER' | 'MEMBER';
 
 export interface ReadingGroup {
@@ -50,6 +52,7 @@ export interface ReadingProgress {
   memo: string | null;
   created_at: string;
   nickname: string | null;
+  deleted_by_owner: boolean;
 }
 
 export interface GroupComment {
