@@ -53,3 +53,11 @@ class LibraryCommentEntry(CamelModel):
 
 class LibraryCommentListResponse(CamelModel):
     items: list[LibraryCommentEntry]
+
+
+class ProgressActivityEntry(CamelModel):
+    recorded_at: datetime
+
+
+class ProgressActivityListResponse(CamelModel):
+    items: list[ProgressActivityEntry]

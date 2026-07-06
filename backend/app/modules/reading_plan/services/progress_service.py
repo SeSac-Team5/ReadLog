@@ -13,6 +13,7 @@ from app.modules.reading_plan.schemas.library import UserLibraryItem
 from app.modules.reading_plan.schemas.progress import (
     LibraryCommentBook,
     LibraryCommentEntry,
+    ProgressActivityEntry,
     ProgressLogEntry,
 )
 from app.modules.reading_plan.services.library_service import to_library_item_response
@@ -122,3 +123,15 @@ def list_library_comments(db: Session, user_id: int) -> list[LibraryCommentEntry
             )
         )
     return entries
+
+
+def list_progress_activity(db: Session, user_id: int) -> list[ProgressActivityEntry]:
+    # 연속독서 계산용 — 진도 입력 시 코멘트(memo)를 남긴 날짜만 "그날 읽었다"로 친다.
+    # 책 하나로 스코프된 list_progress_logs와 달리 사용자의 모든 서재 항목을 다 본다.
+    logs = (
+        db.query(ReadingProgressLog)
+        .join(UserLibrary, ReadingProgressLog.library_id == UserLibrary.id)
+        .filter(UserLibrary.user_id == user_id, ReadingProgressLog.memo.isnot(None))
+        .all()
+    )
+    return [ProgressActivityEntry(recorded_at=log.recorded_at) for log in logs]

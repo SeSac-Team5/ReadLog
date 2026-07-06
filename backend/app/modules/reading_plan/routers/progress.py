@@ -5,6 +5,7 @@ from app.modules.reading_plan.deps import get_current_user_id
 from app.db import get_db
 from app.modules.reading_plan.schemas.progress import (
     LibraryCommentListResponse,
+    ProgressActivityListResponse,
     ProgressCreateRequest,
     ProgressCreateResponse,
     ProgressLogListResponse,
@@ -12,6 +13,7 @@ from app.modules.reading_plan.schemas.progress import (
 from app.modules.reading_plan.services.progress_service import (
     add_progress_log,
     list_library_comments,
+    list_progress_activity,
     list_progress_logs,
 )
 
@@ -53,3 +55,12 @@ def list_library_comments_endpoint(
 ) -> LibraryCommentListResponse:
     items = list_library_comments(db, user_id=user_id)
     return LibraryCommentListResponse(items=items)
+
+
+@router.get("/progress-activity", response_model=ProgressActivityListResponse)
+def list_progress_activity_endpoint(
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+) -> ProgressActivityListResponse:
+    items = list_progress_activity(db, user_id=user_id)
+    return ProgressActivityListResponse(items=items)
