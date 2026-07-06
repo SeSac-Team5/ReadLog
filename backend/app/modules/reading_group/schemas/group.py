@@ -63,11 +63,6 @@ class JoinGroupRequest(BaseModel):
     code: str = Field(..., description="상시 초대 코드 또는 임시 초대 코드")
 
 
-class JoinGroupResponse(MemberResponse):
-    book_added: bool = False
-    book_title: Optional[str] = None
-
-
 # ── Member ─────────────────────────────────────────────────────────────────
 
 class MemberResponse(BaseModel):
@@ -81,6 +76,11 @@ class MemberResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class JoinGroupResponse(MemberResponse):
+    book_added: bool = False
+    book_title: Optional[str] = None
 
 
 class DelegateRequest(BaseModel):
