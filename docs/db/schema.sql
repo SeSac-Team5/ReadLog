@@ -109,9 +109,15 @@ CREATE TABLE reading_progress(
  progress FLOAT CHECK(progress>=0 AND progress<=100),
  bookmark_title VARCHAR(100),memo VARCHAR(300),
  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ deleted_by_owner TINYINT(1) NOT NULL DEFAULT 0,
+ dismissed_by_member TINYINT(1) NOT NULL DEFAULT 0,
  FOREIGN KEY(group_id) REFERENCES reading_groups(id) ON DELETE CASCADE,
  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+-- owner가 soft delete한(deleted_by_owner=1) 뒤 멤버가 아직 확인하지 않은(dismissed_by_member=0) 알림 조회용
+-- (backend/app/migrations/001_add_progress_soft_delete.sql 참고)
+CREATE INDEX idx_reading_progress_soft_delete
+  ON reading_progress (group_id, deleted_by_owner, dismissed_by_member);
 CREATE TABLE group_comments(
  id BIGINT AUTO_INCREMENT PRIMARY KEY,
  group_id BIGINT,user_id BIGINT,progress_id BIGINT,parent_comment_id BIGINT,
