@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
 import {
-  FlatList, StyleSheet,
+  FlatList, KeyboardAvoidingView, Platform, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useGroupComments } from '../../hooks/reading-group/useGroups';
 import SpoilerComment from '../../components/reading-group/SpoilerComment';
@@ -22,8 +20,6 @@ export default function CommentsScreen({ route }: Props) {
   const [isSpoiler, setIsSpoiler] = useState(false);
   const [quote, setQuote] = useState('');
   const [sending, setSending] = useState(false);
-
-  const insets = useSafeAreaInsets();
 
   async function handleSend() {
     if (!content.trim()) return;
@@ -54,7 +50,7 @@ export default function CommentsScreen({ route }: Props) {
           />
         )}
       />
-      <KeyboardStickyView offset={{ closed: insets.bottom, opened: 0 }}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.inputArea}>
           <View style={styles.inputInner}>
             <TextInput
@@ -84,7 +80,7 @@ export default function CommentsScreen({ route }: Props) {
             <Text style={styles.sendIcon}>↑</Text>
           </TouchableOpacity>
         </View>
-      </KeyboardStickyView>
+      </KeyboardAvoidingView>
     </View>
   );
 }

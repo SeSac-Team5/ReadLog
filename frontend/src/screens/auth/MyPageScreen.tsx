@@ -2,7 +2,6 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import {
-  Bell,
   BookOpen,
   ChevronRight,
   Lock,
@@ -32,7 +31,7 @@ type ActivityTabId = 'records' | 'reviews' | 'comments' | 'groups';
 
 const ACTIVITY_TABS: { id: ActivityTabId; label: string; icon: typeof BookOpen; emptyText: string }[] = [
   { id: 'records', label: '독서기록', icon: BookOpen, emptyText: '아직 등록한 독서기록이 없어요.' },
-  { id: 'reviews', label: '한줄평', icon: MessageSquareText, emptyText: '작성한 한줄평이 없어요.' },
+  { id: 'reviews', label: '내 코멘트', icon: MessageSquareText, emptyText: '작성한 코멘트가 없어요.' },
   { id: 'groups', label: '독서그룹 활동', icon: Users, emptyText: '참여 중인 독서그룹 활동이 없어요.' },
   { id: 'comments', label: '댓글', icon: MessageCircle, emptyText: '작성한 댓글이 없어요.' },
 ];
@@ -41,14 +40,12 @@ export function MyPageScreen({
   onNavigateEditProfile,
   onNavigateChangePassword,
   onNavigateDeleteAccount,
-  onNavigateNotificationSettings,
   onOpenReadingRecord,
   onOpenGroupActivity,
 }: {
   onNavigateEditProfile: () => void;
   onNavigateChangePassword: () => void;
   onNavigateDeleteAccount: () => void;
-  onNavigateNotificationSettings: () => void;
   onOpenReadingRecord: (libraryItemId: string) => void;
   onOpenGroupActivity: (groupId: number) => void;
 }) {
@@ -197,14 +194,6 @@ export function MyPageScreen({
             <View style={styles.menuItemLeft}>
               <Lock size={16} color={colors.textMuted} />
               <Text style={styles.menuItemLabel}>비밀번호 변경</Text>
-            </View>
-            <ChevronRight size={14} color={colors.textMuted} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem} onPress={onNavigateNotificationSettings}>
-            <View style={styles.menuItemLeft}>
-              <Bell size={16} color={colors.textMuted} />
-              <Text style={styles.menuItemLabel}>알림 설정</Text>
             </View>
             <ChevronRight size={14} color={colors.textMuted} />
           </TouchableOpacity>

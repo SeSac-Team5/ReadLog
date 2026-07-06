@@ -4,8 +4,10 @@ from typing import Optional
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.modules.reading_plan.models.book import Book
 from app.modules.reading_plan.models.enums import LibraryStatus
 from app.modules.reading_plan.models.reading_progress_log import ReadingProgressLog
+from app.modules.reading_plan.models.review import Review
 from app.modules.reading_plan.models.user_library import UserLibrary
 from app.modules.reading_plan.schemas.library import UserLibraryItem
 from app.modules.reading_plan.schemas.progress import (
@@ -91,24 +93,32 @@ def list_progress_logs(db: Session, library_id: int, user_id: int) -> list[Progr
 
 
 def list_library_comments(db: Session, user_id: int) -> list[LibraryCommentEntry]:
-    logs = (
-        db.query(ReadingProgressLog)
-        .join(UserLibrary, ReadingProgressLog.library_id == UserLibrary.id)
-        .filter(UserLibrary.user_id == user_id, ReadingProgressLog.memo.isnot(None))
-        .order_by(ReadingProgressLog.recorded_at.desc())
+    # 이름은 "comment"지만 마이페이지 "한줄평" 탭용 실제 데이터 소스는 reviews 테이블이다.
+    # (원래 reading_progress_logs.memo를 보여줬는데, 그건 진도 저장 시 남기는 코멘트라
+    # OneLineReviewScreen에서 작성하는 진짜 한줄평과 다른 데이터라 안 보이는 버그였음)
+    rows = (
+        db.query(Review, Book)
+        .join(Book, Review.book_id == Book.id)
+        .filter(Review.user_id == user_id)
+        .order_by(Review.updated_at.desc())
         .all()
     )
-    return [
-        LibraryCommentEntry(
-            id=str(log.id),
-            library_id=str(log.library_id),
-            book=LibraryCommentBook(
-                id=str(log.library_entry.book.id),
-                title=log.library_entry.book.title,
-                cover_url=log.library_entry.book.cover_url,
-            ),
-            memo=log.memo,
-            recorded_at=log.recorded_at,
+    library_id_by_book = {
+        entry.book_id: entry.id
+        for entry in db.query(UserLibrary).filter(UserLibrary.user_id == user_id).all()
+    }
+    entries = []
+    for review, book in rows:
+        library_id = library_id_by_book.get(review.book_id)
+        if library_id is None:
+            continue
+        entries.append(
+            LibraryCommentEntry(
+                id=str(review.id),
+                library_id=str(library_id),
+                book=LibraryCommentBook(id=str(book.id), title=book.title, cover_url=book.cover_url),
+                memo=review.review,
+                recorded_at=review.updated_at,
+            )
         )
-        for log in logs
-    ]
+    return entries

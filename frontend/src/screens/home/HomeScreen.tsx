@@ -1,13 +1,35 @@
-import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Bell, BookMarked, BookOpen, ChevronRight } from 'lucide-react-native';
+import { BookMarked, BookOpen, ChevronRight } from 'lucide-react-native';
 import { useLibrary } from '../../store/reading-plan/libraryStore';
 import { useAuth } from '../../store/auth/AuthContext';
 import { useMyGroups, useMyLatestGroupProgress } from '../../hooks/reading-group/useGroups';
 import { fetchComments } from '../../api/reading-group';
 import type { ReadingGroup } from '../../types/reading-group';
 import { colors } from '../../constants/theme';
+
+// 연속독서 1일차엔 "연속 1일차!"라고 하면 어색해서 아직 스트릭을 언급하지 않는
+// 문구를 쓰고, 2일차부터만 실제 연속 일수를 넣은 문구를 랜덤으로 고른다.
+const STREAK_DAY_ONE_MESSAGES = [
+  '오늘도 한 걸음! 잘하고 있어요 😊',
+  '꾸준함의 시작이에요 🌱',
+  '오늘 첫 기록, 좋아요! 📖',
+];
+
+const STREAK_MULTI_DAY_MESSAGES = (days: number) => [
+  `연속 ${days}일 독서! 대단해요 🔥`,
+  `${days}일 연속으로 읽고 있어요 ✨ 멋져요!`,
+  `독서 ${days}일 연속, 이 기세로 계속 가봐요 💪`,
+  `${days}일째 이어가는 중이에요 📚 최고예요!`,
+  `연속 ${days}일차! 습관이 되어가고 있어요 🌟`,
+];
+
+function pickStreakMessage(streakDays: number | null): string | null {
+  if (streakDays === null || streakDays <= 0) return null;
+  const pool = streakDays === 1 ? STREAK_DAY_ONE_MESSAGES : STREAK_MULTI_DAY_MESSAGES(streakDays);
+  return pool[Math.floor(Math.random() * pool.length)];
+}
 
 // Design ported from origin/YSE's MainHomeScreen, rewired onto this branch's
 // real data layer (useLibrary()) and navigation (direct navigation.navigate
@@ -74,6 +96,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     };
   }, [groups, user]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- 스트릭 값이 바뀔 때만 새로 뽑고,
+  // 그 사이 리렌더링에서는 같은 문구를 유지한다 (매 렌더마다 바뀌면 깜빡여서 어색함).
+  const streakMessage = useMemo(() => pickStreakMessage(streakDays), [streakDays]);
+
   const completedCount = items.filter((item) => item.status === 'COMPLETED').length;
   const readingItems = items.filter((item) => item.status === 'READING');
   const totalPages = items.reduce((sum, item) => sum + (item.currentPage || 0), 0);
@@ -93,7 +119,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           </View>
           <Text style={styles.logoText}>READLOG</Text>
         </View>
-        <Bell size={20} color={colors.textMuted} strokeWidth={1.5} />
       </View>
 
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
@@ -103,6 +128,11 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             <Text style={styles.statusCount}>{readingItems.length}</Text>
             <Text style={styles.statusCountUnit}>권 읽는 중</Text>
           </View>
+          {streakMessage ? (
+            <View style={styles.streakBadge}>
+              <Text style={styles.streakBadgeText}>{streakMessage}</Text>
+            </View>
+          ) : null}
 
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
@@ -353,6 +383,19 @@ const styles = StyleSheet.create({
   statusCountUnit: {
     fontSize: 13,
     color: 'rgba(253,251,244,0.7)',
+  },
+  streakBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginTop: 8,
+  },
+  streakBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.beigeLight,
   },
   moreBtn: {
     flexDirection: 'row',

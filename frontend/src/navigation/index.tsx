@@ -19,7 +19,6 @@ import { ChangePasswordScreen } from '../screens/auth/ChangePasswordScreen';
 import { DeleteAccountScreen } from '../screens/auth/DeleteAccountScreen';
 import { FindIdScreen } from '../screens/auth/FindIdScreen';
 import { FindPasswordScreen } from '../screens/auth/FindPasswordScreen';
-import { NotificationSettingsScreen } from '../screens/auth/NotificationSettingsScreen';
 
 // reading-plan
 import BookSearchScreen from '../screens/reading-plan/BookSearchScreen';
@@ -89,7 +88,6 @@ function MyPageWrapper({ navigation }: { navigation: any }) {
       onNavigateEditProfile={() => navigation.navigate('EditProfile')}
       onNavigateChangePassword={() => navigation.navigate('ChangePassword')}
       onNavigateDeleteAccount={() => navigation.navigate('DeleteAccount')}
-      onNavigateNotificationSettings={() => navigation.navigate('NotificationSettings')}
       onOpenReadingRecord={(libraryItemId) =>
         navigation.navigate('LibraryTab', { screen: 'ReadingProgress', params: { libraryItemId } })
       }
@@ -110,10 +108,6 @@ function ChangePasswordWrapper({ navigation }: { navigation: any }) {
 
 function DeleteAccountWrapper({ navigation }: { navigation: any }) {
   return <DeleteAccountScreen onBack={() => navigation.goBack()} />;
-}
-
-function NotificationSettingsWrapper({ navigation }: { navigation: any }) {
-  return <NotificationSettingsScreen onBack={() => navigation.goBack()} />;
 }
 
 function HomeStack() {
@@ -159,7 +153,6 @@ function MyPageStack() {
       <Stack.Screen name="EditProfile" component={EditProfileWrapper} />
       <Stack.Screen name="ChangePassword" component={ChangePasswordWrapper} />
       <Stack.Screen name="DeleteAccount" component={DeleteAccountWrapper} />
-      <Stack.Screen name="NotificationSettings" component={NotificationSettingsWrapper} />
     </Stack.Navigator>
   );
 }
