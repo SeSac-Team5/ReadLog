@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Alert, Platform, ScrollView, StyleSheet, Text,
+  Alert, Image, Platform, ScrollView, StyleSheet, Text,
   TouchableOpacity, View,
 } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -8,6 +8,7 @@ import { TextInput } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as api from '../../api/reading-group';
 import { COLORS } from '../../constants/theme';
+import type { SelectedLibraryBook } from './SelectLibraryBookScreen';
 
 type Props = NativeStackScreenProps<any, 'CreateGroup'>;
 
@@ -23,8 +24,6 @@ function todayMidnight(): Date {
   return d;
 }
 
-type PickedBook = { book_id: number; title: string; author: string };
-
 export default function CreateGroupScreen({ navigation }: Props) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -32,13 +31,12 @@ export default function CreateGroupScreen({ navigation }: Props) {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [pickerTarget, setPickerTarget] = useState<'start' | 'end' | null>(null);
-  const [selectedBook, setSelectedBook] = useState<PickedBook | null>(null);
+  const [selectedBook, setSelectedBook] = useState<SelectedLibraryBook | null>(null);
   const [loading, setLoading] = useState(false);
 
   function openBookSearch() {
-    navigation.navigate('BookSearch', {
-      pickerMode: true,
-      onBookSelect: (book: PickedBook) => setSelectedBook(book),
+    navigation.navigate('SelectLibraryBook', {
+      onSelect: (book: SelectedLibraryBook) => setSelectedBook(book),
     });
   }
 
@@ -152,7 +150,11 @@ export default function CreateGroupScreen({ navigation }: Props) {
         <Text style={styles.label}>진행 도서 (선택)</Text>
         {selectedBook ? (
           <View style={styles.bookCard}>
-            <View style={styles.bookCover} />
+            {selectedBook.coverUrl ? (
+              <Image source={{ uri: selectedBook.coverUrl }} style={styles.bookCover} resizeMode="cover" />
+            ) : (
+              <View style={styles.bookCover} />
+            )}
             <View style={{ flex: 1 }}>
               <Text style={styles.bookTitle} numberOfLines={1}>{selectedBook.title}</Text>
               <Text style={styles.bookAuthor} numberOfLines={1}>{selectedBook.author}</Text>
@@ -164,7 +166,7 @@ export default function CreateGroupScreen({ navigation }: Props) {
         ) : (
           <TouchableOpacity style={styles.bookAddBtn} onPress={openBookSearch}>
             <Text style={styles.bookAddIcon}>＋</Text>
-            <Text style={styles.bookAddText}>도서 검색 및 선택</Text>
+            <Text style={styles.bookAddText}>내 서재에서 선택</Text>
           </TouchableOpacity>
         )}
       </View>

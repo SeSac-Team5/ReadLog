@@ -32,6 +32,7 @@ import SNSShareScreen from '../screens/reading-plan/SNSShareScreen';
 // reading-group
 import GroupListScreen from '../screens/reading-group/GroupListScreen';
 import CreateGroupScreen from '../screens/reading-group/CreateGroupScreen';
+import SelectLibraryBookScreen from '../screens/reading-group/SelectLibraryBookScreen';
 import JoinGroupScreen from '../screens/reading-group/JoinGroupScreen';
 import GroupHomeScreen from '../screens/reading-group/GroupHomeScreen';
 import InviteScreen from '../screens/reading-group/InviteScreen';
@@ -139,6 +140,11 @@ function GroupStack() {
     <Stack.Navigator screenOptions={stackOptions}>
       <Stack.Screen name="GroupList" component={GroupListScreen} options={{ title: '독서모임', headerShown: false }} />
       <Stack.Screen name="CreateGroup" component={CreateGroupScreen} options={{ title: '모임 개설' }} />
+      <Stack.Screen
+        name="SelectLibraryBook"
+        component={SelectLibraryBookScreen as React.ComponentType<any>}
+        options={{ title: '진행 도서 선택' }}
+      />
       <Stack.Screen name="JoinGroup" component={JoinGroupScreen} options={{ title: '모임 참가' }} />
       <Stack.Screen name="GroupHome" component={GroupHomeScreen} options={{ title: '모임 홈' }} />
       <Stack.Screen name="Invite" component={InviteScreen} options={{ title: '멤버 초대' }} />
