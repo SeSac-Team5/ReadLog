@@ -267,3 +267,11 @@ C의 `origin/Ryu`가 우리 `df83d8e`(진행 도서 선택 기능) 지점에서 
 
 - **가져온 것**: 모임 홈/진도 공유 화면에 진행 도서 표지 이미지 표시(`GroupResponse.book_cover_url`/`book_page_count` 추가, `group_service.get_book_meta`), 진도 공유 화면의 하드코딩된 총 페이지 수(`247`)를 실제 도서 페이지 수로 교체, 초대 코드로 모임 참가 시 해당 도서를 자동으로 내 서재에 추가(`invite_service.join_by_code`가 `UserLibrary`에 직접 insert) + 참가 후 안내 알림, 모임 개설/설정 화면의 최대 인원 UI를 5단계 칩 방식에서 2~20명 스크롤 칩 + 직접입력으로 개선, Android `adaptiveIcon.foregroundImage`에 우리가 만든 책 아이콘 등록.
 - **병합 후 고친 버그(C 커밋에 이미 있던 문제, 우리 병합과 무관)**: `backend/app/modules/reading_group/schemas/group.py`에서 `JoinGroupResponse(MemberResponse)`가 `MemberResponse` 클래스보다 먼저 선언되어 있어서 `NameError`로 백엔드가 부팅조차 안 됐음 — `JoinGroupResponse`를 `MemberResponse` 선언 뒤로 옮겨서 해결.
+
+### origin/yseSUM 재병합 (A — 연속독서 계산에 개인 진도 코멘트 포함)
+
+`origin/yseSUM`이 우리의 직전 yseSUM 병합 지점(`8ffc0d0`)에서 커밋 하나(`8bb7971`)만 더 나간 상태였다. 그 사이 이 자리에서 사용자에게 "홈 화면 연속독서가 그룹 댓글에만 의존해서 모임에 안 든 사용자는 매일 읽어도 0으로 뜬다"고 설명했는데, 정확히 같은 문제를 고치는 커밋이었다.
+
+- **가져온 것**: 백엔드에 `GET /library/progress-activity` 신규 엔드포인트(`list_progress_activity` 서비스 함수) — 사용자의 모든 서재 항목을 통틀어 진도 코멘트(memo)를 남긴 날짜 목록을 반환. 프론트 홈 화면의 스트릭 계산이 이제 (1) 개인 진도 코멘트 날짜 + (2) 모임 댓글 날짜를 합쳐서 계산하도록 변경 — 모임이 하나도 없어도 개인 코멘트만으로 스트릭이 인정된다.
+- **충돌 및 해결**: `progress_service.py`의 `list_library_comments`에서 또 같은 패턴의 충돌이 났다 — A의 로컬 사본이 여전히 이 함수를 `reviews` 테이블 기반으로 되돌리려는 옛 버전을 들고 있었음(위 첫 yseSUM 병합에서 이미 반려한 그 변경). 이번엔 3-way 병합이 실제 conflict marker를 띄워서(같은 함수를 우리도 그 뒤에 계속 수정했기 때문) 자동으로 조용히 덮이진 않았다. HEAD의 진도 코멘트 기반 버전을 유지하고, 새로 추가된 `list_progress_activity` 함수만 그 아래에 이어붙였다.
+- 검증: tsc 클린(테스트 파일의 기존 `@types/jest` 누락 에러 제외), 백엔드 부팅 정상(routes 57→58), Metro 번들 정상.
