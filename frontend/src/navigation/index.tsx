@@ -93,6 +93,9 @@ function MyPageWrapper({ navigation }: { navigation: any }) {
       onOpenReadingRecord={(libraryItemId) =>
         navigation.navigate('LibraryTab', { screen: 'ReadingProgress', params: { libraryItemId } })
       }
+      onOpenGroupActivity={(groupId) =>
+        navigation.navigate('GroupTab', { screen: 'GroupHome', params: { groupId } })
+      }
     />
   );
 }

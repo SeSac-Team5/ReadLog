@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
 from app.modules.reading_plan.models.enums import LibraryStatus
@@ -31,6 +31,7 @@ class UserLibraryItem(CamelModel):
     rating: Optional[float] = None
     started_at: Optional[date] = None
     completed_at: Optional[date] = None
+    updated_at: datetime
 
 
 class LibraryListResponse(CamelModel):
