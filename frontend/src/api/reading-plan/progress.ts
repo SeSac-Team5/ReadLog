@@ -1,4 +1,4 @@
-import type { ProgressLogEntry, UserLibraryItem } from "../../types/reading-plan/book";
+import type { LibraryComment, ProgressLogEntry, UserLibraryItem } from "../../types/reading-plan/book";
 import { requestJson } from "./httpClient";
 
 interface AddProgressInput {
@@ -30,5 +30,14 @@ export async function fetchProgressLogs(libraryId: string): Promise<ProgressLogE
   const response = await requestJson<ProgressLogListResponse>(
     `/library/${libraryId}/progress-logs`
   );
+  return response.items;
+}
+
+interface LibraryCommentListResponse {
+  items: LibraryComment[];
+}
+
+export async function fetchLibraryComments(): Promise<LibraryComment[]> {
+  const response = await requestJson<LibraryCommentListResponse>("/library/comments");
   return response.items;
 }

@@ -26,13 +26,19 @@ export function useGroupDetail(groupId: number) {
 }
 
 export function useGroupProgress(groupId: number) {
-  const { progressList, fetchProgress, shareProgress } = useGroupStore();
+  const { progressList, fetchProgress, shareProgress, updateProgress, deleteProgress, dismissProgressNotice } = useGroupStore();
 
   useEffect(() => {
     fetchProgress(groupId);
   }, [groupId]);
 
-  return { progressList, share: (data: Parameters<typeof shareProgress>[1]) => shareProgress(groupId, data) };
+  return {
+    progressList,
+    share: (data: Parameters<typeof shareProgress>[1]) => shareProgress(groupId, data),
+    update: (progressId: number, data: Parameters<typeof updateProgress>[2]) => updateProgress(groupId, progressId, data),
+    remove: (progressId: number) => deleteProgress(groupId, progressId),
+    dismiss: (progressId: number) => dismissProgressNotice(groupId, progressId),
+  };
 }
 
 // 여러 모임을 동시에 보여주는 화면(홈/마이페이지)에서 카드별로 쓰는 훅.

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import {
-  FlatList, KeyboardAvoidingView, Platform, StyleSheet,
+  FlatList, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useGroupComments } from '../../hooks/reading-group/useGroups';
-import { useKeyboardHeight } from '../../hooks/reading-group/useKeyboardHeight';
 import SpoilerComment from '../../components/reading-group/SpoilerComment';
 import { useAuth } from '../../store/auth/AuthContext';
 import { COLORS } from '../../constants/theme';
@@ -22,7 +23,7 @@ export default function CommentsScreen({ route }: Props) {
   const [quote, setQuote] = useState('');
   const [sending, setSending] = useState(false);
 
-  const kbHeight = useKeyboardHeight();
+  const insets = useSafeAreaInsets();
 
   async function handleSend() {
     if (!content.trim()) return;
@@ -37,8 +38,8 @@ export default function CommentsScreen({ route }: Props) {
     }
   }
 
-  const listAndInput = (
-    <>
+  return (
+    <View style={styles.container}>
       <FlatList
         style={styles.list_container}
         data={comments}
@@ -53,56 +54,38 @@ export default function CommentsScreen({ route }: Props) {
           />
         )}
       />
-      <View style={styles.inputArea}>
-        <View style={styles.inputInner}>
-          <TextInput
-            style={styles.textInput}
-            placeholder="댓글 입력..."
-            placeholderTextColor="#9E9E8A"
-            value={content}
-            onChangeText={setContent}
-            multiline
-          />
-          <View style={styles.inputActions}>
-            <TouchableOpacity onPress={() => setIsSpoiler(!isSpoiler)}>
-              <Text style={[styles.actionText, isSpoiler && { color: COLORS.deepGreen }]}>
-                ⚠ 스포일러{isSpoiler ? ' ON' : ''}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => {}}>
-              <Text style={styles.actionText}>원문 인용</Text>
-            </TouchableOpacity>
+      <KeyboardStickyView offset={{ closed: insets.bottom, opened: 0 }}>
+        <View style={styles.inputArea}>
+          <View style={styles.inputInner}>
+            <TextInput
+              style={styles.textInput}
+              placeholder="댓글 입력..."
+              placeholderTextColor="#9E9E8A"
+              value={content}
+              onChangeText={setContent}
+              multiline
+            />
+            <View style={styles.inputActions}>
+              <TouchableOpacity onPress={() => setIsSpoiler(!isSpoiler)}>
+                <Text style={[styles.actionText, isSpoiler && { color: COLORS.deepGreen }]}>
+                  ⚠ 스포일러{isSpoiler ? ' ON' : ''}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => {}}>
+                <Text style={styles.actionText}>원문 인용</Text>
+              </TouchableOpacity>
+            </View>
           </View>
+          <TouchableOpacity
+            style={[styles.sendBtn, (!content.trim() || sending) && { opacity: 0.4 }]}
+            onPress={handleSend}
+            disabled={!content.trim() || sending}
+          >
+            <Text style={styles.sendIcon}>↑</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          style={[styles.sendBtn, (!content.trim() || sending) && { opacity: 0.4 }]}
-          onPress={handleSend}
-          disabled={!content.trim() || sending}
-        >
-          <Text style={styles.sendIcon}>↑</Text>
-        </TouchableOpacity>
-      </View>
-    </>
-  );
-
-  // Android: 키보드 높이만큼 컨테이너 하단 패딩 → 입력창이 키보드 바로 위에 위치
-  if (Platform.OS === 'android') {
-    return (
-      <View style={[styles.container, { paddingBottom: kbHeight }]}>
-        {listAndInput}
-      </View>
-    );
-  }
-
-  // iOS: KAV padding behavior 유지
-  return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior="padding"
-      keyboardVerticalOffset={88}
-    >
-      {listAndInput}
-    </KeyboardAvoidingView>
+      </KeyboardStickyView>
+    </View>
   );
 }
 

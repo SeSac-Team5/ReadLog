@@ -11,7 +11,6 @@ import {
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -21,6 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Circle, Text as SvgText } from "react-native-svg";
 
 import { addStickers, createSnsPost } from "../../api/reading-plan/sns";
+import { useProgressLogs } from "../../hooks/reading-plan/useProgressLogs";
 import { useLibrary } from "../../store/reading-plan/libraryStore";
 import type { UserLibraryItem } from "../../types/reading-plan/book";
 import type {
@@ -53,6 +53,7 @@ const COMMENT_BACKGROUND_OPTIONS: {
   swatch: string;
 }[] = [
   { key: "white", label: "화이트", swatch: "rgba(255, 255, 255, 0.9)" },
+  { key: "beige", label: "베이지", swatch: "rgba(237, 231, 216, 0.95)" },
   { key: "gray", label: "그레이", swatch: "rgba(200, 197, 190, 0.9)" },
   { key: "transparent", label: "투명", swatch: "transparent" },
   { key: "dark", label: "다크", swatch: "rgba(0, 0, 0, 0.6)" },
@@ -141,11 +142,15 @@ function SNSShareScreenView({ libraryItem, onBack, onShared }: SNSShareScreenPro
   const [overlayType, setOverlayType] = useState<Extract<StickerType, `progress_${string}`>>(
     "progress_badge"
   );
-  const [commentDraft, setCommentDraft] = useState("");
   const [commentBackground, setCommentBackground] = useState<CommentStickerBackground>("white");
-  const [isAddingComment, setIsAddingComment] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { logs: progressLogs } = useProgressLogs(libraryItem.id);
+  const latestComment = useMemo(
+    () => progressLogs.find((log) => log.memo)?.memo ?? null,
+    [progressLogs]
+  );
 
   const totalPages = libraryItem.book.pageCount ?? 0;
   const percent = totalPages
@@ -161,7 +166,6 @@ function SNSShareScreenView({ libraryItem, onBack, onShared }: SNSShareScreenPro
         id: createStickerId("overlay"),
         type: overlayType,
         emoji: null,
-        content: null,
         x: 0.68,
         y: 0.72,
         scale: 1,
@@ -195,7 +199,6 @@ function SNSShareScreenView({ libraryItem, onBack, onShared }: SNSShareScreenPro
       id: createStickerId("emoji"),
       type: "emoji",
       emoji,
-      content: null,
       x: 0.42,
       y: 0.38,
       scale: 1,
@@ -207,13 +210,12 @@ function SNSShareScreenView({ libraryItem, onBack, onShared }: SNSShareScreenPro
   };
 
   const handleAddCommentSticker = () => {
-    const text = commentDraft.trim();
-    if (!text) return;
+    if (!latestComment) return;
     const sticker: Sticker = {
       id: createStickerId("comment"),
       type: "comment",
       emoji: null,
-      content: text,
+      content: latestComment,
       backgroundColor: commentBackground,
       x: 0.24,
       y: 0.55,
@@ -223,8 +225,6 @@ function SNSShareScreenView({ libraryItem, onBack, onShared }: SNSShareScreenPro
     };
     setStickers((prev) => [...prev, sticker]);
     setSelectedStickerId(sticker.id);
-    setCommentDraft("");
-    setIsAddingComment(false);
   };
 
   const addBookCoverSticker = () => {
@@ -232,7 +232,6 @@ function SNSShareScreenView({ libraryItem, onBack, onShared }: SNSShareScreenPro
       id: createStickerId("cover"),
       type: "book_cover",
       emoji: null,
-      content: null,
       x: 0.5,
       y: 0.12,
       scale: 1,
@@ -482,6 +481,56 @@ function SNSShareScreenView({ libraryItem, onBack, onShared }: SNSShareScreenPro
           </TouchableOpacity>
         ) : null}
 
+        <View style={styles.commentStickerBox}>
+          <Text style={styles.sectionLabel}>코멘트 스티커</Text>
+          {latestComment ? (
+            <>
+              <Text style={styles.helperText}>최근 진도 기록에 남긴 코멘트예요</Text>
+              <View
+                style={[
+                  styles.commentPreviewBubble,
+                  { backgroundColor: commentBackgroundStyle(commentBackground) },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.commentPreviewText,
+                    { color: commentTextColor(commentBackground) },
+                  ]}
+                  numberOfLines={3}
+                >
+                  {latestComment}
+                </Text>
+              </View>
+              <View style={styles.backgroundSwatchRow}>
+                {COMMENT_BACKGROUND_OPTIONS.map((option) => {
+                  const active = commentBackground === option.key;
+                  return (
+                    <TouchableOpacity
+                      key={option.key}
+                      style={[
+                        styles.backgroundSwatch,
+                        { backgroundColor: option.swatch },
+                        active && styles.backgroundSwatchActive,
+                      ]}
+                      onPress={() => setCommentBackground(option.key)}
+                    >
+                      {active ? <Text style={styles.backgroundSwatchCheck}>✓</Text> : null}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              <TouchableOpacity style={styles.dashedButton} onPress={handleAddCommentSticker}>
+                <Text style={styles.dashedButtonText}>+ 코멘트 스티커 추가</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <Text style={styles.helperText}>
+              독서 진도 입력 화면에서 코멘트를 남기면 여기서 스티커로 추가할 수 있어요
+            </Text>
+          )}
+        </View>
+
         <View style={styles.overlayBox}>
           <View style={styles.overlayHeaderRow}>
             <View style={styles.overlayHeaderText}>
@@ -517,50 +566,6 @@ function SNSShareScreenView({ libraryItem, onBack, onShared }: SNSShareScreenPro
               <Text style={styles.helperText}>미리보기 위에서 드래그해 위치를 조정할 수 있어요.</Text>
             </>
           ) : null}
-        </View>
-
-        <View style={styles.commentStickerBox}>
-          <Text style={styles.sectionLabel}>코멘트 스티커 추가</Text>
-          <Text style={styles.helperText}>사진 위 자유 위치에 배치되는 텍스트예요</Text>
-          {isAddingComment ? (
-            <>
-              <View style={styles.commentDraftRow}>
-                <TextInput
-                  style={styles.commentDraftInput}
-                  placeholder="스티커에 표시할 문구"
-                  placeholderTextColor={COLORS.textMuted}
-                  value={commentDraft}
-                  onChangeText={setCommentDraft}
-                  maxLength={40}
-                />
-                <TouchableOpacity style={styles.smallPrimaryButton} onPress={handleAddCommentSticker}>
-                  <Text style={styles.smallPrimaryButtonText}>추가</Text>
-                </TouchableOpacity>
-              </View>
-              <View style={styles.backgroundSwatchRow}>
-                {COMMENT_BACKGROUND_OPTIONS.map((option) => {
-                  const active = commentBackground === option.key;
-                  return (
-                    <TouchableOpacity
-                      key={option.key}
-                      style={[
-                        styles.backgroundSwatch,
-                        { backgroundColor: option.swatch },
-                        active && styles.backgroundSwatchActive,
-                      ]}
-                      onPress={() => setCommentBackground(option.key)}
-                    >
-                      {active ? <Text style={styles.backgroundSwatchCheck}>✓</Text> : null}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </>
-          ) : (
-            <TouchableOpacity style={styles.dashedButton} onPress={() => setIsAddingComment(true)}>
-              <Text style={styles.dashedButtonText}>+ 코멘트 스티커</Text>
-            </TouchableOpacity>
-          )}
         </View>
 
         <TouchableOpacity style={styles.dashedButton} onPress={handlePickPhoto}>
@@ -1182,23 +1187,20 @@ const styles = StyleSheet.create({
   commentStickerBox: {
     gap: 8,
   },
-  commentDraftRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  commentDraftInput: {
-    flex: 1,
-    backgroundColor: COLORS.beigeDark,
-    borderRadius: 10,
-    paddingHorizontal: 12,
+  commentPreviewBubble: {
+    borderRadius: 12,
+    paddingHorizontal: 14,
     paddingVertical: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.border,
+  },
+  commentPreviewText: {
     fontSize: 13,
     color: COLORS.textPrimary,
   },
   backgroundSwatchRow: {
     flexDirection: "row",
     gap: 10,
-    marginTop: 4,
   },
   backgroundSwatch: {
     width: 28,
@@ -1217,17 +1219,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     color: COLORS.deepGreen,
-  },
-  smallPrimaryButton: {
-    backgroundColor: COLORS.deepGreen,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    justifyContent: "center",
-  },
-  smallPrimaryButtonText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: COLORS.beigeLight,
   },
   dashedButton: {
     borderWidth: 2,

@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   Bell,
   BookOpen,
@@ -14,9 +15,10 @@ import {
 } from 'lucide-react-native';
 import { colors } from '../../constants/theme';
 import { useAuth } from '../../store/auth/AuthContext';
+import { useLibraryComments } from '../../hooks/reading-plan/useLibraryComments';
 import { useLibrary } from '../../store/reading-plan/libraryStore';
 import { useMyGroups, useMyLatestGroupProgress } from '../../hooks/reading-group/useGroups';
-import type { UserLibraryItem } from '../../types/reading-plan/book';
+import type { LibraryComment, UserLibraryItem } from '../../types/reading-plan/book';
 import type { ReadingGroup } from '../../types/reading-group';
 
 function formatDate(iso: string) {
@@ -52,12 +54,24 @@ export function MyPageScreen({
 }) {
   const { user, logout } = useAuth();
   const { items: libraryItems, loadLibrary } = useLibrary();
-  const { groups, loading: isGroupsLoading } = useMyGroups();
+  const { groups, loading: isGroupsLoading, refresh: refreshGroups } = useMyGroups();
+  const { comments, refetch: refetchComments } = useLibraryComments();
   const [activeTab, setActiveTab] = useState<ActivityTabId>('records');
 
-  useEffect(() => {
-    loadLibrary();
-  }, [loadLibrary]);
+  useFocusEffect(
+    useCallback(() => {
+      loadLibrary();
+      refetchComments();
+      refreshGroups();
+    }, [loadLibrary, refetchComments, refreshGroups])
+  );
+
+  const handleTabPress = (tabId: ActivityTabId) => {
+    setActiveTab(tabId);
+    if (tabId === 'records') loadLibrary();
+    if (tabId === 'reviews') refetchComments();
+    if (tabId === 'groups') refreshGroups();
+  };
 
   if (!user) return null;
 
@@ -66,8 +80,9 @@ export function MyPageScreen({
   const readingRecords = libraryItems.filter((item) => item.status !== 'WISH');
   const showEmptyState =
     (activeTab === 'records' && readingRecords.length === 0) ||
+    (activeTab === 'reviews' && comments.length === 0) ||
     (activeTab === 'groups' && groups.length === 0) ||
-    (activeTab !== 'records' && activeTab !== 'groups');
+    (activeTab !== 'records' && activeTab !== 'reviews' && activeTab !== 'groups');
 
   return (
     <View style={styles.container}>
@@ -107,7 +122,7 @@ export function MyPageScreen({
             <TouchableOpacity
               key={tab.id}
               style={[styles.tabItem, activeTab === tab.id && styles.tabItemActive]}
-              onPress={() => setActiveTab(tab.id)}
+              onPress={() => handleTabPress(tab.id)}
             >
               <Text style={[styles.tabLabel, activeTab === tab.id && styles.tabLabelActive]}>
                 {tab.label}
@@ -141,6 +156,19 @@ export function MyPageScreen({
                   item={item}
                   onPress={() => onOpenReadingRecord(item.id)}
                 />
+              ))}
+            </ScrollView>
+          </View>
+        ) : activeTab === 'reviews' ? (
+          <View style={styles.recordListWrapper}>
+            <ScrollView
+              style={styles.recordListScroll}
+              contentContainerStyle={styles.recordListContent}
+              nestedScrollEnabled
+              showsVerticalScrollIndicator
+            >
+              {comments.map((comment) => (
+                <LibraryCommentCard key={comment.id} comment={comment} />
               ))}
             </ScrollView>
           </View>
@@ -304,6 +332,69 @@ function GroupActivityCard({
     </TouchableOpacity>
   );
 }
+
+function LibraryCommentCard({ comment }: { comment: LibraryComment }) {
+  return (
+    <View style={commentStyles.card}>
+      {comment.book.coverUrl ? (
+        <Image source={{ uri: comment.book.coverUrl }} style={commentStyles.cover} resizeMode="cover" />
+      ) : (
+        <View style={commentStyles.coverPlaceholder}>
+          <BookOpen size={16} color={colors.beigeLight} strokeWidth={1.5} />
+        </View>
+      )}
+      <View style={commentStyles.contentCol}>
+        <Text style={commentStyles.title} numberOfLines={1}>
+          {comment.book.title}
+        </Text>
+        <Text style={commentStyles.memo}>{comment.memo}</Text>
+      </View>
+    </View>
+  );
+}
+
+const commentStyles = StyleSheet.create({
+  card: {
+    flexDirection: 'row',
+    gap: 12,
+    backgroundColor: colors.beigeLight,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 14,
+    marginBottom: 12,
+  },
+  cover: {
+    width: 40,
+    height: 57,
+    borderRadius: 6,
+    backgroundColor: colors.beigeDim,
+  },
+  coverPlaceholder: {
+    width: 40,
+    height: 57,
+    borderRadius: 6,
+    backgroundColor: colors.deepGreen,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contentCol: {
+    flex: 1,
+    minWidth: 0,
+    justifyContent: 'center',
+    gap: 6,
+  },
+  title: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  memo: {
+    fontSize: 13,
+    color: colors.textPrimary,
+    lineHeight: 18,
+  },
+});
 
 const recordStyles = StyleSheet.create({
   card: {

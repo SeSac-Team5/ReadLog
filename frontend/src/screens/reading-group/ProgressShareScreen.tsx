@@ -6,41 +6,67 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useGroupProgress } from '../../hooks/reading-group/useGroups';
 import { COLORS } from '../../constants/theme';
+import type { ProgressPayload } from '../../types/reading-group';
 
 type Props = NativeStackScreenProps<any, 'ProgressShare'>;
 type InputMode = 'page' | 'chapter' | 'percent';
 
-export default function ProgressShareScreen({ navigation, route }: Props) {
-  const { groupId } = route.params as { groupId: number };
-  const { share } = useGroupProgress(groupId);
+interface InitialData {
+  chapter?: string | null;
+  page?: number | null;
+  progress?: number | null;
+  memo?: string | null;
+}
 
-  const [mode, setMode] = useState<InputMode>('page');
-  const [page, setPage] = useState('');
-  const [chapter, setChapter] = useState('');
-  const [percent, setPercent] = useState('');
-  const [memo, setMemo] = useState('');
+export default function ProgressShareScreen({ navigation, route }: Props) {
+  const { groupId, progressId, initialData } = route.params as {
+    groupId: number;
+    progressId?: number;
+    initialData?: InitialData;
+  };
+  const isEditMode = !!progressId;
+  const { share, update } = useGroupProgress(groupId);
+
+  const initMode = (): InputMode => {
+    if (!initialData) return 'page';
+    if (initialData.page != null) return 'page';
+    if (initialData.chapter != null) return 'chapter';
+    return 'percent';
+  };
+
+  const [mode, setMode] = useState<InputMode>(initMode);
+  const [page, setPage] = useState(initialData?.page != null ? String(initialData.page) : '');
+  const [chapter, setChapter] = useState(initialData?.chapter ?? '');
+  const [percent, setPercent] = useState(initialData?.progress != null ? String(Math.round(initialData.progress)) : '');
+  const [memo, setMemo] = useState(initialData?.memo ?? '');
   const [loading, setLoading] = useState(false);
 
   const progressValue = mode === 'percent' ? parseFloat(percent) : undefined;
   const pageValue = mode === 'page' ? parseInt(page, 10) : undefined;
   const displayPercent = progressValue ?? (pageValue ? Math.min(100, (pageValue / 247) * 100) : 0);
 
-  async function handleShare() {
+  async function handleSubmit() {
     if (mode === 'page' && !page) { Alert.alert('페이지를 입력해주세요.'); return; }
     if (mode === 'chapter' && !chapter) { Alert.alert('챕터를 입력해주세요.'); return; }
     if (mode === 'percent' && !percent) { Alert.alert('퍼센트를 입력해주세요.'); return; }
 
+    const payload: ProgressPayload = {
+      page: pageValue,
+      chapter: chapter || undefined,
+      progress: progressValue ?? Math.round(displayPercent),
+      memo: memo || undefined,
+    };
+
     setLoading(true);
     try {
-      await share({
-        page: pageValue,
-        chapter: chapter || undefined,
-        progress: progressValue ?? Math.round(displayPercent),
-        memo: memo || undefined,
-      });
+      if (isEditMode) {
+        await update(progressId, payload);
+      } else {
+        await share(payload);
+      }
       navigation.goBack();
     } catch {
-      Alert.alert('진도 공유에 실패했습니다.');
+      Alert.alert(isEditMode ? '진도 수정에 실패했습니다.' : '진도 공유에 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -138,10 +164,10 @@ export default function ProgressShareScreen({ navigation, route }: Props) {
 
       <TouchableOpacity
         style={[styles.primaryBtn, loading && { opacity: 0.6 }]}
-        onPress={handleShare}
+        onPress={handleSubmit}
         disabled={loading}
       >
-        <Text style={styles.primaryBtnText}>진도 공유하기</Text>
+        <Text style={styles.primaryBtnText}>{isEditMode ? '진도 수정하기' : '진도 공유하기'}</Text>
       </TouchableOpacity>
     </ScrollView>
   );

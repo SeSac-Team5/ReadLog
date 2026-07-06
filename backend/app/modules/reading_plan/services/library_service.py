@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
@@ -52,6 +54,12 @@ def add_to_library(
     else:
         entry = UserLibrary(user_id=user_id, book_id=book.id, status=status)
         db.add(entry)
+
+    if status == LibraryStatus.COMPLETED:
+        if book.page_count:
+            entry.current_page = max(entry.current_page or 0, book.page_count)
+        if entry.completed_at is None:
+            entry.completed_at = date.today()
 
     db.commit()
     db.refresh(entry)

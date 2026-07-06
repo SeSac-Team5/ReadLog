@@ -74,6 +74,7 @@ function ReadingProgressScreenView({
   const { logs, isLoading: isHistoryLoading, refetch } = useProgressLogs(libraryItem.id);
 
   const [pageValue, setPageValue] = useState(libraryItem.currentPage);
+  const [comment, setComment] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -81,6 +82,14 @@ function ReadingProgressScreenView({
     ? Math.round((libraryItem.currentPage / totalPages) * 100)
     : 0;
   const percentValue = totalPages ? Math.min(100, Math.round((pageValue / totalPages) * 100)) : 0;
+
+  const getLogPercent = (log: (typeof logs)[number]) => {
+    if (log.percent != null) return Math.max(0, Math.min(100, Math.round(log.percent)));
+    if (totalPages && log.page != null) {
+      return Math.max(0, Math.min(100, Math.round((log.page / totalPages) * 100)));
+    }
+    return 0;
+  };
 
   const handlePageChange = (text: string) => {
     const parsed = parseInt(text, 10);
@@ -101,8 +110,10 @@ function ReadingProgressScreenView({
     setIsSaving(true);
     setError(null);
     try {
-      await recordProgress(libraryItem.id, { page: pageValue });
+      const memo = comment.trim() || undefined;
+      await recordProgress(libraryItem.id, { page: pageValue, memo });
       await refetch();
+      setComment("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "진도 저장에 실패했어요");
     } finally {
@@ -163,6 +174,17 @@ function ReadingProgressScreenView({
           </Text>
         </View>
 
+        <Text style={styles.sectionLabel}>코멘트 (선택)</Text>
+        <TextInput
+          style={styles.commentInput}
+          placeholder="이번 진도에 대한 생각을 남겨보세요"
+          placeholderTextColor={COLORS.textMuted}
+          value={comment}
+          onChangeText={setComment}
+          multiline
+          maxLength={200}
+        />
+
         <View style={styles.progressSection}>
           <View style={styles.progressLabelRow}>
             <Text style={styles.progressLabel}>진도율</Text>
@@ -202,22 +224,41 @@ function ReadingProgressScreenView({
           <Text style={styles.emptyHistoryText}>아직 저장된 진도 기록이 없어요</Text>
         ) : (
           <View style={styles.historyList}>
-            {logs.map((log) => (
-              <View key={log.id} style={styles.historyRow}>
-                <View style={styles.historyBadge}>
-                  <Text style={styles.historyBadgeText}>{log.percent ?? "-"}%</Text>
+            {logs.map((log) => {
+              const logPercent = getLogPercent(log);
+              return (
+                <View key={log.id} style={styles.historyRow}>
+                  <View style={styles.historyBadge}>
+                    <Text style={styles.historyBadgeText}>{log.percent ?? "-"}%</Text>
+                  </View>
+                  <View style={styles.historyInfo}>
+                    <Text style={styles.historyPage}>
+                      p.{log.page ?? "-"}
+                      {totalPages ? ` / ${totalPages}` : ""}
+                    </Text>
+                    <Text style={styles.historyDate}>
+                      {new Date(log.recordedAt).toLocaleString()}
+                    </Text>
+                    {log.memo ? (
+                      <Text style={styles.historyMemo} numberOfLines={2}>
+                        {log.memo}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <View style={styles.historyProgressColumn}>
+                    <View style={styles.historyProgressTrack}>
+                      <View
+                        style={[
+                          styles.historyProgressFill,
+                          { width: `${Math.max(logPercent > 0 ? 4 : 0, logPercent)}%` },
+                        ]}
+                      />
+                    </View>
+                    <Text style={styles.historyProgressText}>{logPercent}%</Text>
+                  </View>
                 </View>
-                <View style={styles.historyInfo}>
-                  <Text style={styles.historyPage}>
-                    p.{log.page ?? "-"}
-                    {totalPages ? ` / ${totalPages}` : ""}
-                  </Text>
-                  <Text style={styles.historyDate}>
-                    {new Date(log.recordedAt).toLocaleString()}
-                  </Text>
-                </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
         )}
       </ScrollView>
@@ -350,6 +391,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.textMuted,
   },
+  commentInput: {
+    minHeight: 72,
+    backgroundColor: COLORS.beigeDark,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 13,
+    color: COLORS.textPrimary,
+    textAlignVertical: "top",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.border,
+  },
   progressSection: {
     marginTop: 4,
   },
@@ -423,6 +476,33 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: COLORS.textMuted,
     marginTop: 2,
+  },
+  historyMemo: {
+    fontSize: 11,
+    color: COLORS.textSubtle,
+    marginTop: 4,
+  },
+  historyProgressColumn: {
+    width: 56,
+    alignItems: "flex-end",
+  },
+  historyProgressTrack: {
+    width: "100%",
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: COLORS.beigeDark,
+    overflow: "hidden",
+  },
+  historyProgressFill: {
+    height: "100%",
+    borderRadius: 999,
+    backgroundColor: COLORS.deepGreen,
+  },
+  historyProgressText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: COLORS.deepGreen,
+    marginTop: 4,
   },
   errorText: {
     fontSize: 12,

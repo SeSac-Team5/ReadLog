@@ -8,7 +8,11 @@ from app.modules.reading_plan.models.enums import LibraryStatus
 from app.modules.reading_plan.models.reading_progress_log import ReadingProgressLog
 from app.modules.reading_plan.models.user_library import UserLibrary
 from app.modules.reading_plan.schemas.library import UserLibraryItem
-from app.modules.reading_plan.schemas.progress import ProgressLogEntry
+from app.modules.reading_plan.schemas.progress import (
+    LibraryCommentBook,
+    LibraryCommentEntry,
+    ProgressLogEntry,
+)
 from app.modules.reading_plan.services.library_service import to_library_item_response
 
 
@@ -84,3 +88,27 @@ def list_progress_logs(db: Session, library_id: int, user_id: int) -> list[Progr
         .all()
     )
     return [_to_log_entry(log) for log in logs]
+
+
+def list_library_comments(db: Session, user_id: int) -> list[LibraryCommentEntry]:
+    logs = (
+        db.query(ReadingProgressLog)
+        .join(UserLibrary, ReadingProgressLog.library_id == UserLibrary.id)
+        .filter(UserLibrary.user_id == user_id, ReadingProgressLog.memo.isnot(None))
+        .order_by(ReadingProgressLog.recorded_at.desc())
+        .all()
+    )
+    return [
+        LibraryCommentEntry(
+            id=str(log.id),
+            library_id=str(log.library_id),
+            book=LibraryCommentBook(
+                id=str(log.library_entry.book.id),
+                title=log.library_entry.book.title,
+                cover_url=log.library_entry.book.cover_url,
+            ),
+            memo=log.memo,
+            recorded_at=log.recorded_at,
+        )
+        for log in logs
+    ]
