@@ -213,3 +213,11 @@ develop 통합(V2.5) 이후 A가 `origin/YSE`에서 계속 작업한 커밋(`26c
   - `SNSShareScreen.tsx`: `react-native-share` → `expo-sharing` 교체가 섞여 있었음. Expo Go에서 `react-native-share`가 네이티브 모듈 부재로 크래시하는 걸 A가 발견하고 고친 것으로 보이나, 인스타그램 스토리 다이렉트 공유를 잃는 트레이드오프가 있어 사용자에게 확인 후 **`react-native-share` 유지**로 결정 — 병합 시 자동으로 딸려 들어온 `expo-sharing` 관련 코드/의존성(`package.json`의 `expo-sharing` 추가, `@react-native-community/slider`/`react-native-share` 제거)을 되돌렸다.
   - `frontend/app.json`/`src/config.ts`의 `apiBaseUrl`도 A의 로컬 IP(`192.168.38.141:8001`)로 자동 병합됐길래 B의 로컬 IP(`192.168.38.40:8000`)로 되돌림 — 이 값은 각자 로컬 백엔드 서버 IP라 병합 대상이 아님, 로컬 실행 전 각자 자기 머신 IP로 다시 바꿔야 함.
 - **스키마 버전 번호 충돌**: A의 커밋과 B의 로컬 미커밋 변경이 둘 다 "V2.6"을 자체적으로 붙이고 있었음(A는 `bookmarks` 제거, B는 코멘트 스티커 컬럼 제거). A의 V2.6은 이미 `origin/YSE`에 커밋되어 공유된 상태라 그대로 두고, B 쪽 두 변경을 V2.7/V2.8로 재번호 매김.
+
+### 마이페이지 "한줄평" 탭에 진도 코멘트 노출 (A·B 협업)
+
+A의 마이페이지 "독서기록" 탭이 `useLibrary()`를 직접 가져다 쓰는 선례를 그대로 따라, "한줄평" 탭도 reading-plan 데이터를 직접 소비하도록 구현했다. 다만 여기서 말하는 "한줄평"은 `reviews` 테이블(완독 후 남기는 한 줄 평, `OneLineReviewScreen`)이 아니라 **독서 진도 입력 화면에서 남긴 코멘트(`reading_progress_logs.memo`)** 다 — 마이페이지 탭 이름이 먼저 있었고, 그 자리에 진도 코멘트를 채워 넣기로 한 것.
+
+- **백엔드**: `GET /library/comments` 신규 엔드포인트 추가. `user_library.user_id`로 소유권을 거른 뒤 `reading_progress_logs`를 조인해서 `memo IS NOT NULL`인 기록만 최신순으로 반환(`progress_service.list_library_comments`). 책별로 흩어진 코멘트를 시간순으로 한 번에 보여주기 위해 기존 `/library/{id}/progress-logs`(단일 책 전용)와는 별도 엔드포인트로 뺐다.
+- **프론트**: `hooks/reading-plan/useLibraryComments.ts`(신규) + `api/reading-plan/progress.ts`의 `fetchLibraryComments` + `types/reading-plan/book.ts`의 `LibraryComment` 타입을 reading-plan 쪽에 추가. `MyPageScreen.tsx`(auth)는 이 훅을 그대로 가져다 써서 "한줄평" 탭에 책 표지 + 제목 + 코멘트만 보여주는 단순한 카드 리스트(`LibraryCommentCard`)를 렌더링한다 — 탭하면 어디로 이동하는 기능은 요청에 없어서 넣지 않음(간단하게만 보여달라는 요청이었음).
+- 기존 "독서기록" 탭과 마찬가지로 `types/common` 승격 없이 auth 화면이 reading-plan의 훅/타입을 직접 import하는 방식을 그대로 따랐다 — 이미 확립된 선례와 일관성을 유지하기 위함(원칙적으로는 CLAUDE.md §5-3의 "다른 모듈 폴더 직접 import 금지"에 어긋나지만, A의 기존 구현이 이미 이 패턴이라 이번만 예외로 따름).

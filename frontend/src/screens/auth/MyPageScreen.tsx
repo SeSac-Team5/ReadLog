@@ -14,8 +14,9 @@ import {
 } from 'lucide-react-native';
 import { colors } from '../../constants/theme';
 import { useAuth } from '../../store/auth/AuthContext';
+import { useLibraryComments } from '../../hooks/reading-plan/useLibraryComments';
 import { useLibrary } from '../../store/reading-plan/libraryStore';
-import type { UserLibraryItem } from '../../types/reading-plan/book';
+import type { LibraryComment, UserLibraryItem } from '../../types/reading-plan/book';
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -48,6 +49,7 @@ export function MyPageScreen({
 }) {
   const { user, logout } = useAuth();
   const { items: libraryItems, loadLibrary } = useLibrary();
+  const { comments } = useLibraryComments();
   const [activeTab, setActiveTab] = useState<ActivityTabId>('records');
 
   useEffect(() => {
@@ -59,7 +61,10 @@ export function MyPageScreen({
   const activeTabInfo = ACTIVITY_TABS.find((t) => t.id === activeTab)!;
   const ActiveTabIcon = activeTabInfo.icon;
   const readingRecords = libraryItems.filter((item) => item.status !== 'WISH');
-  const showEmptyState = activeTab !== 'records' || readingRecords.length === 0;
+  const showEmptyState =
+    (activeTab === 'records' && readingRecords.length === 0) ||
+    (activeTab === 'reviews' && comments.length === 0) ||
+    (activeTab !== 'records' && activeTab !== 'reviews');
 
   return (
     <View style={styles.container}>
@@ -115,7 +120,7 @@ export function MyPageScreen({
             <ActiveTabIcon size={28} color={colors.textMuted} strokeWidth={1.5} />
             <Text style={styles.tabEmptyText}>{activeTabInfo.emptyText}</Text>
           </View>
-        ) : (
+        ) : activeTab === 'records' ? (
           <View style={styles.recordListWrapper}>
             <ScrollView
               style={styles.recordListScroll}
@@ -129,6 +134,19 @@ export function MyPageScreen({
                   item={item}
                   onPress={() => onOpenReadingRecord(item.id)}
                 />
+              ))}
+            </ScrollView>
+          </View>
+        ) : (
+          <View style={styles.recordListWrapper}>
+            <ScrollView
+              style={styles.recordListScroll}
+              contentContainerStyle={styles.recordListContent}
+              nestedScrollEnabled
+              showsVerticalScrollIndicator
+            >
+              {comments.map((comment) => (
+                <LibraryCommentCard key={comment.id} comment={comment} />
               ))}
             </ScrollView>
           </View>
@@ -239,6 +257,69 @@ function ReadingRecordCard({
     </TouchableOpacity>
   );
 }
+
+function LibraryCommentCard({ comment }: { comment: LibraryComment }) {
+  return (
+    <View style={commentStyles.card}>
+      {comment.book.coverUrl ? (
+        <Image source={{ uri: comment.book.coverUrl }} style={commentStyles.cover} resizeMode="cover" />
+      ) : (
+        <View style={commentStyles.coverPlaceholder}>
+          <BookOpen size={18} color={colors.beigeLight} strokeWidth={1.5} />
+        </View>
+      )}
+      <View style={commentStyles.contentCol}>
+        <Text style={commentStyles.title} numberOfLines={1}>
+          {comment.book.title}
+        </Text>
+        <Text style={commentStyles.memo}>{comment.memo}</Text>
+      </View>
+    </View>
+  );
+}
+
+const commentStyles = StyleSheet.create({
+  card: {
+    flexDirection: 'row',
+    gap: 12,
+    backgroundColor: colors.beigeLight,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 14,
+    marginBottom: 12,
+  },
+  cover: {
+    width: 48,
+    height: 68,
+    borderRadius: 8,
+    backgroundColor: colors.beigeDim,
+  },
+  coverPlaceholder: {
+    width: 48,
+    height: 68,
+    borderRadius: 8,
+    backgroundColor: colors.deepGreen,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contentCol: {
+    flex: 1,
+    minWidth: 0,
+    justifyContent: 'center',
+    gap: 6,
+  },
+  title: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  memo: {
+    fontSize: 13,
+    color: colors.textPrimary,
+    lineHeight: 18,
+  },
+});
 
 const recordStyles = StyleSheet.create({
   card: {

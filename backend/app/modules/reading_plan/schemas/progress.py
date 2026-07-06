@@ -35,3 +35,21 @@ class ProgressCreateResponse(CamelModel):
 
 class ProgressLogListResponse(CamelModel):
     items: list[ProgressLogEntry]
+
+
+class LibraryCommentBook(CamelModel):
+    id: str
+    title: str
+    cover_url: Optional[str] = None
+
+
+class LibraryCommentEntry(CamelModel):
+    id: str
+    library_id: str
+    book: LibraryCommentBook
+    memo: str
+    recorded_at: datetime
+
+
+class LibraryCommentListResponse(CamelModel):
+    items: list[LibraryCommentEntry]

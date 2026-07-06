@@ -47,3 +47,15 @@ export interface ProgressLogEntry {
   memo: string | null;
   recordedAt: string;
 }
+
+export interface LibraryComment {
+  id: string;
+  libraryId: string;
+  book: {
+    id: string;
+    title: string;
+    coverUrl?: string | null;
+  };
+  memo: string;
+  recordedAt: string;
+}

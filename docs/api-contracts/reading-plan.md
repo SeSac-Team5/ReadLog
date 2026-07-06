@@ -14,6 +14,7 @@
 | PUT | `/goals/current` | 이번 달 독서 목표 설정/수정 (upsert) | body: `{ target: number }` (1 이상) | `MonthlyGoalResponse` |
 | POST | `/library/{id}/progress` | 진도 기록 추가 (`reading_progress_logs` insert + `user_library.current_page` 갱신) | body: `{ page?: number, percent?: number, memo?: string }` (`page`/`percent` 중 최소 1개 필수, 나머지는 서버가 `book.pageCount` 기준으로 환산. `memo`는 진도 입력 화면에서 남기는 코멘트) | `{ log: ProgressLogEntry, library: UserLibraryItem }` (201). 새 `page`가 기존 `current_page`보다 낮으면 400. `page`가 `book.pageCount` 이상이 되면 `status`가 자동으로 `COMPLETED`로 바뀌고 `completedAt`이 채워짐 |
 | GET | `/library/{id}/progress-logs` | 진도 기록 타임라인 조회 (최신순, `memo` 포함) | - | `{ items: ProgressLogEntry[] }` |
+| GET | `/library/comments` | 내 서재 전체에서 `memo`가 채워진 진도 기록만 최신순으로 조회 (마이페이지 "한줄평" 탭용) | - | `{ items: LibraryCommentEntry[] }` |
 | POST | `/sns-posts` | SNS 공유 게시물 생성 (사진) | body: `{ bookId?: string, imageUrl: string, content?: string }` (`content`는 더 이상 프론트에서 채우지 않음 — 하위 호환용으로만 남김) | `SnsPostResponse` (201, `stickers: []`) |
 | POST | `/sns-posts/{id}/stickers` | 게시물에 스티커 일괄 추가 (이모지/코멘트 스티커/책 표지 스티커/진도 오버레이) | body: `{ stickers: StickerInput[] }` | `SnsPostResponse` (201, 누적된 전체 stickers 포함) |
 | GET | `/reviews/{bookId}` | 특정 책에 대한 내 한줄평 조회 | - | `{ review: ReviewEntry \| null }` |
@@ -43,6 +44,14 @@ interface ProgressLogEntry {
   page: number | null;
   percent: number | null;
   memo: string | null;
+  recordedAt: string; // ISO datetime
+}
+
+interface LibraryCommentEntry {
+  id: string;
+  libraryId: string;
+  book: { id: string; title: string; coverUrl: string | null };
+  memo: string; // null인 기록은 애초에 응답에서 제외됨
   recordedAt: string; // ISO datetime
 }
 
