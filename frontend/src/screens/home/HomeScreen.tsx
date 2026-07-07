@@ -326,7 +326,9 @@ function GroupPreviewCard({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.beigeDim,
+    // 헤더와 같은 배경색 — SafeAreaView가 그리는 상단 안전영역(상태표시줄 밑)이
+    // 헤더 흰색과 이어져 보이게 한다. 스크롤 영역의 베이지 배경은 body에서 따로 지정.
+    backgroundColor: colors.beigeLight,
   },
   header: {
     flexDirection: 'row',
@@ -360,6 +362,7 @@ const styles = StyleSheet.create({
   },
   body: {
     flex: 1,
+    backgroundColor: colors.beigeDim,
   },
   bodyContent: {
     padding: 16,
