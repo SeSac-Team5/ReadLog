@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AlertTriangle, BookMarked, Check } from 'lucide-react-native';
 import { Field, PrimaryBtn } from '../../components/auth/FormPrimitives';
 import { colors } from '../../constants/theme';
@@ -34,7 +35,7 @@ export function LoginScreen({
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <View style={styles.logoBox}>
           <BookMarked size={28} color={colors.beigeLight} strokeWidth={1.5} />
@@ -96,7 +97,7 @@ export function LoginScreen({
           <Text style={styles.footerLink}>비밀번호 찾기</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -105,7 +106,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.beigeLight,
     paddingHorizontal: 24,
-    paddingTop: 56,
+    paddingTop: 16,
   },
   header: {
     alignItems: 'center',

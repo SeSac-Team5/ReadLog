@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { BookMarked, BookOpen, ChevronRight } from 'lucide-react-native';
 import { useLibrary } from '../../store/reading-plan/libraryStore';
@@ -115,7 +116,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     .slice(0, 2);
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={styles.logoBadge}>
@@ -269,7 +270,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           )}
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -332,7 +333,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 48,
+    paddingTop: 12,
     paddingBottom: 12,
     backgroundColor: colors.beigeLight,
     borderBottomWidth: 1,

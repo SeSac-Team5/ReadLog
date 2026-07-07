@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AlertTriangle, ArrowLeft, Check } from 'lucide-react-native';
 import * as authApi from '../../api/auth/authApi';
 import { Field, Label, PrimaryBtn } from '../../components/auth/FormPrimitives';
@@ -26,7 +27,7 @@ export function DeleteAccountScreen({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.navBar}>
         <TouchableOpacity onPress={onBack} style={styles.navBarSide}>
           <ArrowLeft size={20} color={colors.deepGreen} />
@@ -75,7 +76,7 @@ export function DeleteAccountScreen({ onBack }: { onBack: () => void }) {
           탈퇴하기
         </PrimaryBtn>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -89,7 +90,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 48,
+    paddingTop: 12,
     paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { ArrowLeft, Camera, Check, User, X } from 'lucide-react-native';
 import * as authApi from '../../api/auth/authApi';
@@ -81,7 +82,7 @@ export function EditProfileScreen({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.navBar}>
         <TouchableOpacity onPress={onBack} style={styles.navBarSide}>
           <ArrowLeft size={20} color={colors.deepGreen} />
@@ -159,7 +160,7 @@ export function EditProfileScreen({ onBack }: { onBack: () => void }) {
           저장하기
         </PrimaryBtn>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -173,7 +174,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 48,
+    paddingTop: 12,
     paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
