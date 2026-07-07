@@ -1,23 +1,35 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert, Clipboard, Share, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import * as api from '../../api/reading-group';
 import { useGroupDetail } from '../../hooks/reading-group/useGroups';
+import { useGroupStore } from '../../store/reading-group/groupStore';
 import { COLORS } from '../../constants/theme';
+import NavBar from '../../components/common/NavBar';
 import type { GroupInvite } from '../../types/reading-group';
 
 type Props = NativeStackScreenProps<any, 'Invite'>;
 
-export default function InviteScreen({ route }: Props) {
+export default function InviteScreen({ navigation, route }: Props) {
   const { groupId } = route.params as { groupId: number };
   const { group } = useGroupDetail(groupId);
+  const { fetchGroup } = useGroupStore();
   const [tempInvite, setTempInvite] = useState<GroupInvite | null>(null);
 
   useEffect(() => {
     api.createTempInvite(groupId, 24).then(setTempInvite).catch(() => {});
   }, [groupId]);
+
+  // 다른 멤버가 그 사이 참가해서 인원수가 바뀌었을 수 있으니 화면에
+  // 다시 포커스될 때마다 모임 정보를 새로 받아온다.
+  useFocusEffect(
+    useCallback(() => {
+      fetchGroup(groupId);
+    }, [groupId, fetchGroup])
+  );
 
   const staticCode = group?.invite_code ?? '';
   const tempCode = tempInvite?.invite_code ?? '';
@@ -35,7 +47,9 @@ export default function InviteScreen({ route }: Props) {
   if (!group) return null;
 
   return (
-    <View style={styles.container}>
+    <View style={styles.screen}>
+      <NavBar title="멤버 초대" onBack={() => navigation.goBack()} />
+      <View style={styles.container}>
       <Text style={styles.groupName}>{group.name}</Text>
       <Text style={styles.memberCount}>{group.member_count}/{group.max_member}명 참여 중</Text>
 
@@ -71,11 +85,13 @@ export default function InviteScreen({ route }: Props) {
           <Text style={styles.primaryBtnText}>공유하기</Text>
         </TouchableOpacity>
       </View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: COLORS.beigeDark },
   container: {
     flex: 1, backgroundColor: COLORS.beigeDark,
     paddingHorizontal: 24, paddingTop: 24,

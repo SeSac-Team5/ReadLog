@@ -5,6 +5,7 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as api from '../../api/reading-group';
 import { COLORS } from '../../constants/theme';
+import NavBar from '../../components/common/NavBar';
 
 type Props = NativeStackScreenProps<any, 'JoinGroup'>;
 
@@ -32,7 +33,9 @@ export default function JoinGroupScreen({ navigation }: Props) {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={styles.screen}>
+      <NavBar title="모임 참가" onBack={() => navigation.goBack()} />
+      <View style={styles.container}>
       <View style={styles.iconWrap}>
         <Text style={styles.icon}>🔗</Text>
       </View>
@@ -60,11 +63,13 @@ export default function JoinGroupScreen({ navigation }: Props) {
       >
         <Text style={styles.primaryBtnText}>참가하기</Text>
       </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: COLORS.beigeDark },
   container: {
     flex: 1,
     backgroundColor: COLORS.beigeDark,

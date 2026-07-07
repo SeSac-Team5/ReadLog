@@ -7,6 +7,7 @@ import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/dat
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as api from '../../api/reading-group';
 import { COLORS } from '../../constants/theme';
+import NavBar from '../../components/common/NavBar';
 import type { SelectedLibraryBook } from './SelectLibraryBookScreen';
 
 type Props = NativeStackScreenProps<any, 'CreateGroup'>;
@@ -141,7 +142,9 @@ export default function CreateGroupScreen({ navigation }: Props) {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <View style={styles.container}>
+      <NavBar title="모임 개설" onBack={() => navigation.goBack()} />
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
       <View style={styles.field}>
         <Text style={styles.label}>모임명</Text>
         <TextInput
@@ -267,12 +270,14 @@ export default function CreateGroupScreen({ navigation }: Props) {
       >
         <Text style={styles.primaryBtnText}>모임 개설하기</Text>
       </TouchableOpacity>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.beigeDark },
+  scroll: { flex: 1 },
   content: { padding: 20, gap: 20 },
   field: { gap: 6 },
   label: { fontSize: 12, fontWeight: '500', color: '#7A7060' },

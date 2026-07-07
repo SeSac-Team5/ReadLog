@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { useGroupStore } from '../../store/reading-group/groupStore';
 import { fetchGroupProgress } from '../../api/reading-group';
 
@@ -71,9 +72,12 @@ export function useMyLatestGroupProgress(groupId: number, userId: number | undef
 export function useGroupComments(groupId: number) {
   const { comments, fetchComments, createComment, toggleReaction } = useGroupStore();
 
-  useEffect(() => {
-    fetchComments(groupId);
-  }, [groupId]);
+  // 다른 멤버가 그 사이 남긴 댓글이 보이도록 마운트뿐 아니라 화면 포커스마다 재조회.
+  useFocusEffect(
+    useCallback(() => {
+      fetchComments(groupId);
+    }, [groupId, fetchComments])
+  );
 
   return {
     comments,

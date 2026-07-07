@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   Alert, Image, ScrollView, StyleSheet, Text, TextInput,
   TouchableOpacity, View,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { useGroupProgress } from '../../hooks/reading-group/useGroups';
 import { useGroupStore } from '../../store/reading-group/groupStore';
 import { COLORS } from '../../constants/theme';
+import NavBar from '../../components/common/NavBar';
 import type { ProgressPayload } from '../../types/reading-group';
 
 type Props = NativeStackScreenProps<any, 'ProgressShare'>;
@@ -27,9 +29,17 @@ export default function ProgressShareScreen({ navigation, route }: Props) {
   };
   const isEditMode = !!progressId;
   const { share, update } = useGroupProgress(groupId);
-  const { currentGroup } = useGroupStore();
+  const { currentGroup, fetchGroup } = useGroupStore();
   const bookCoverUrl = currentGroup?.book_cover_url ?? null;
   const totalPages = currentGroup?.book_page_count ?? null;
+
+  // currentGroup은 GroupHomeScreen 등에서 미리 채워둔 값을 그대로 쓰므로,
+  // 그 사이 도서 정보가 바뀌었을 수 있어 화면 진입 시마다 새로 받아온다.
+  useFocusEffect(
+    useCallback(() => {
+      fetchGroup(groupId);
+    }, [groupId, fetchGroup])
+  );
 
   const initMode = (): InputMode => {
     if (!initialData) return 'page';
@@ -81,7 +91,9 @@ export default function ProgressShareScreen({ navigation, route }: Props) {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <View style={styles.screen}>
+      <NavBar title={isEditMode ? '진도 수정' : '진도 공유'} onBack={() => navigation.goBack()} />
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* 모임 도서 헤더 */}
       {(bookCoverUrl || currentGroup?.name) && (
         <View style={styles.bookHeader}>
@@ -197,11 +209,13 @@ export default function ProgressShareScreen({ navigation, route }: Props) {
       >
         <Text style={styles.primaryBtnText}>{isEditMode ? '진도 수정하기' : '진도 공유하기'}</Text>
       </TouchableOpacity>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: COLORS.beigeDark },
   container: { flex: 1, backgroundColor: COLORS.beigeDark },
   content: { padding: 20, gap: 20 },
   bookHeader: {

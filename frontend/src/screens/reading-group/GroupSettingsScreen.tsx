@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   Alert, FlatList, ScrollView, StyleSheet, Text,
   TextInput, TouchableOpacity, View,
@@ -8,10 +8,12 @@ const MIN_MEMBER = 2;
 const MAX_MEMBER = 20;
 const MEMBER_OPTIONS = Array.from({ length: MAX_MEMBER - MIN_MEMBER + 1 }, (_, i) => i + MIN_MEMBER);
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import * as api from '../../api/reading-group';
 import { useGroupStore } from '../../store/reading-group/groupStore';
 import { useAuth } from '../../store/auth/AuthContext';
 import { COLORS } from '../../constants/theme';
+import NavBar from '../../components/common/NavBar';
 import type { MemberRole } from '../../types/reading-group';
 
 type Props = NativeStackScreenProps<any, 'GroupSettings'>;
@@ -28,8 +30,18 @@ export default function GroupSettingsScreen({ navigation, route }: Props) {
   const { groupId } = route.params as { groupId: number };
 
   // useGroupDetail 대신 스토어 직접 접근 — unmount 시 clearCurrent 호출 없음
-  const { currentGroup: group, members, kickMember, delegateOwnership, leaveGroup } = useGroupStore();
+  const { currentGroup: group, members, fetchGroup, fetchMembers, kickMember, delegateOwnership, leaveGroup } = useGroupStore();
   const { user } = useAuth();
+
+  // 위와 같은 이유로 mount 시점의 fetch도 없으므로(전적으로 이전 화면이 채워둔
+  // 스토어 값에 의존), 다른 곳에서 멤버가 바뀌었을 수 있어 화면에 포커스될
+  // 때마다 직접 다시 조회한다.
+  useFocusEffect(
+    useCallback(() => {
+      fetchGroup(groupId);
+      fetchMembers(groupId);
+    }, [groupId, fetchGroup, fetchMembers])
+  );
 
   const myRole = members.find(m => m.user_id === user?.id)?.role ?? 'MEMBER';
   const isOwner = myRole === 'OWNER';
@@ -139,35 +151,40 @@ export default function GroupSettingsScreen({ navigation, route }: Props) {
   // ── MEMBER 전용 화면 ──────────────────────────────────────────────────────
   if (!isOwner) {
     return (
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <Text style={styles.sectionLabel}>멤버 목록</Text>
-        <View style={styles.card}>
-          {members.map((m, i) => (
-            <View
-              key={m.id}
-              style={[styles.memberRow, i === members.length - 1 && { borderBottomWidth: 0 }]}
-            >
-              <View style={styles.memberAvatar}>
-                <Text style={styles.memberAvatarText}>{(m.nickname ?? '?')[0]}</Text>
+      <View style={styles.screen}>
+        <NavBar title="모임 설정" onBack={() => navigation.goBack()} />
+        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+          <Text style={styles.sectionLabel}>멤버 목록</Text>
+          <View style={styles.card}>
+            {members.map((m, i) => (
+              <View
+                key={m.id}
+                style={[styles.memberRow, i === members.length - 1 && { borderBottomWidth: 0 }]}
+              >
+                <View style={styles.memberAvatar}>
+                  <Text style={styles.memberAvatarText}>{(m.nickname ?? '?')[0]}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.memberName}>{m.nickname ?? `User ${m.user_id}`}</Text>
+                  <Text style={styles.memberRole}>{ROLE_LABEL[m.role]}</Text>
+                </View>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.memberName}>{m.nickname ?? `User ${m.user_id}`}</Text>
-                <Text style={styles.memberRole}>{ROLE_LABEL[m.role]}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
+            ))}
+          </View>
 
-        <TouchableOpacity style={styles.leaveBtn} onPress={confirmLeave}>
-          <Text style={styles.leaveBtnText}>모임 탈퇴</Text>
-        </TouchableOpacity>
-      </ScrollView>
+          <TouchableOpacity style={styles.leaveBtn} onPress={confirmLeave}>
+            <Text style={styles.leaveBtnText}>모임 탈퇴</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
     );
   }
 
   // ── OWNER 전용 화면 ───────────────────────────────────────────────────────
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <View style={styles.screen}>
+      <NavBar title="모임 설정" onBack={() => navigation.goBack()} />
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* 기본 정보 */}
       <Text style={styles.sectionLabel}>기본 정보</Text>
       <View style={styles.card}>
@@ -264,11 +281,13 @@ export default function GroupSettingsScreen({ navigation, route }: Props) {
       <TouchableOpacity style={styles.deleteBtn} onPress={confirmDeleteGroup}>
         <Text style={styles.deleteBtnText}>모임 삭제</Text>
       </TouchableOpacity>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: COLORS.beigeDark },
   container: { flex: 1, backgroundColor: COLORS.beigeDark },
   content: { padding: 20, paddingBottom: 40 },
   sectionLabel: {

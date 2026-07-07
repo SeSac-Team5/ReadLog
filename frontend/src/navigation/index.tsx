@@ -135,18 +135,18 @@ function LibraryStack() {
 function GroupStack() {
   return (
     <Stack.Navigator screenOptions={stackOptions}>
-      <Stack.Screen name="GroupList" component={GroupListScreen} options={{ title: '독서모임', headerShown: false }} />
-      <Stack.Screen name="CreateGroup" component={CreateGroupScreen} options={{ title: '모임 개설' }} />
+      <Stack.Screen name="GroupList" component={GroupListScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="CreateGroup" component={CreateGroupScreen} options={{ headerShown: false }} />
       <Stack.Screen
         name="SelectLibraryBook"
         component={SelectLibraryBookScreen as React.ComponentType<any>}
-        options={{ title: '진행 도서 선택' }}
+        options={{ headerShown: false }}
       />
-      <Stack.Screen name="JoinGroup" component={JoinGroupScreen} options={{ title: '모임 참가' }} />
-      <Stack.Screen name="GroupHome" component={GroupHomeScreen} options={{ title: '모임 홈' }} />
-      <Stack.Screen name="Invite" component={InviteScreen} options={{ title: '멤버 초대' }} />
-      <Stack.Screen name="ProgressShare" component={ProgressShareScreen} options={{ title: '진도 공유' }} />
-      <Stack.Screen name="GroupSettings" component={GroupSettingsScreen} options={{ title: '모임 설정' }} />
+      <Stack.Screen name="JoinGroup" component={JoinGroupScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="GroupHome" component={GroupHomeScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Invite" component={InviteScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="ProgressShare" component={ProgressShareScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="GroupSettings" component={GroupSettingsScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }
@@ -202,7 +202,7 @@ function RootNavigator() {
           <Stack.Screen
             name="Comments"
             component={CommentsScreen}
-            options={{ ...stackOptions, headerShown: true, title: '공유 책 댓글' }}
+            options={{ headerShown: false }}
           />
         </>
       )}

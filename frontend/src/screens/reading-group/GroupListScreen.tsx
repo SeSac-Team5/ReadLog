@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   FlatList, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { useMyGroups } from '../../hooks/reading-group/useGroups';
 import { COLORS } from '../../constants/theme';
 import NavBar from '../../components/common/NavBar';
@@ -12,6 +13,14 @@ type Props = NativeStackScreenProps<any, 'GroupList'>;
 
 export default function GroupListScreen({ navigation }: Props) {
   const { groups, loading, refresh } = useMyGroups();
+
+  // 모임을 만들거나 참가하거나 탈퇴/삭제하고 이 목록으로 돌아왔을 때
+  // 항상 최신 상태가 보이도록 화면에 포커스될 때마다 다시 조회한다.
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh])
+  );
 
   function renderItem({ item }: { item: ReadingGroup }) {
     const daysLeft = item.end_date

@@ -4,18 +4,18 @@ import {
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useHeaderHeight } from '@react-navigation/elements';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useGroupComments } from '../../hooks/reading-group/useGroups';
 import SpoilerComment from '../../components/reading-group/SpoilerComment';
+import NavBar, { useNavBarHeight } from '../../components/common/NavBar';
 import { useAuth } from '../../store/auth/AuthContext';
 import { COLORS } from '../../constants/theme';
 import type { GroupComment } from '../../types/reading-group';
 
 type Props = NativeStackScreenProps<any, 'Comments'>;
 
-export default function CommentsScreen({ route }: Props) {
+export default function CommentsScreen({ navigation, route }: Props) {
   const { groupId } = route.params as { groupId: number };
   const { comments, post, react } = useGroupComments(groupId);
   const { user } = useAuth();
@@ -25,7 +25,9 @@ export default function CommentsScreen({ route }: Props) {
   const [sending, setSending] = useState(false);
 
   const insets = useSafeAreaInsets();
-  const headerHeight = useHeaderHeight();
+  // 네이티브 헤더를 headerShown:false로 숨기고 NavBar를 대신 쓰므로,
+  // useHeaderHeight() 대신 NavBar의 실제 렌더 높이를 오프셋으로 쓴다.
+  const navBarHeight = useNavBarHeight();
 
   async function handleSend() {
     if (!content.trim()) return;
@@ -41,59 +43,63 @@ export default function CommentsScreen({ route }: Props) {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior="padding"
-      keyboardVerticalOffset={Platform.OS === 'android' ? insets.bottom : headerHeight}
-    >
-      <FlatList
-        style={styles.list_container}
-        data={comments}
-        keyExtractor={item => String(item.id)}
-        contentContainerStyle={styles.list}
-        keyboardShouldPersistTaps="handled"
-        renderItem={({ item }: { item: GroupComment }) => (
-          <SpoilerComment
-            comment={item}
-            onReact={emoji => react(item.id, emoji)}
-            currentUserId={user?.id}
-          />
-        )}
-      />
-      <View style={[styles.inputArea, { paddingBottom: 12 + insets.bottom }]}>
-        <View style={styles.inputInner}>
-          <TextInput
-            style={styles.textInput}
-            placeholder="댓글 입력..."
-            placeholderTextColor="#9E9E8A"
-            value={content}
-            onChangeText={setContent}
-            multiline
-          />
-          <View style={styles.inputActions}>
-            <TouchableOpacity onPress={() => setIsSpoiler(!isSpoiler)}>
-              <Text style={[styles.actionText, isSpoiler && { color: COLORS.deepGreen }]}>
-                ⚠ 스포일러{isSpoiler ? ' ON' : ''}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => {}}>
-              <Text style={styles.actionText}>원문 인용</Text>
-            </TouchableOpacity>
+    <View style={styles.screen}>
+      <NavBar title="공유 책 댓글" onBack={() => navigation.goBack()} />
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior="padding"
+        keyboardVerticalOffset={Platform.OS === 'android' ? insets.bottom : navBarHeight}
+      >
+        <FlatList
+          style={styles.list_container}
+          data={comments}
+          keyExtractor={item => String(item.id)}
+          contentContainerStyle={styles.list}
+          keyboardShouldPersistTaps="handled"
+          renderItem={({ item }: { item: GroupComment }) => (
+            <SpoilerComment
+              comment={item}
+              onReact={emoji => react(item.id, emoji)}
+              currentUserId={user?.id}
+            />
+          )}
+        />
+        <View style={[styles.inputArea, { paddingBottom: 12 + insets.bottom }]}>
+          <View style={styles.inputInner}>
+            <TextInput
+              style={styles.textInput}
+              placeholder="댓글 입력..."
+              placeholderTextColor="#9E9E8A"
+              value={content}
+              onChangeText={setContent}
+              multiline
+            />
+            <View style={styles.inputActions}>
+              <TouchableOpacity onPress={() => setIsSpoiler(!isSpoiler)}>
+                <Text style={[styles.actionText, isSpoiler && { color: COLORS.deepGreen }]}>
+                  ⚠ 스포일러{isSpoiler ? ' ON' : ''}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => {}}>
+                <Text style={styles.actionText}>원문 인용</Text>
+              </TouchableOpacity>
+            </View>
           </View>
+          <TouchableOpacity
+            style={[styles.sendBtn, (!content.trim() || sending) && { opacity: 0.4 }]}
+            onPress={handleSend}
+            disabled={!content.trim() || sending}
+          >
+            <Text style={styles.sendIcon}>↑</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          style={[styles.sendBtn, (!content.trim() || sending) && { opacity: 0.4 }]}
-          onPress={handleSend}
-          disabled={!content.trim() || sending}
-        >
-          <Text style={styles.sendIcon}>↑</Text>
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: COLORS.beigeDark },
   container: { flex: 1, backgroundColor: COLORS.beigeDark },
   list_container: { flex: 1 },
   list: { padding: 16, gap: 12 },

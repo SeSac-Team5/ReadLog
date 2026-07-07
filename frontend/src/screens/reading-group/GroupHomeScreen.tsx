@@ -8,6 +8,7 @@ import { useGroupDetail, useGroupProgress } from '../../hooks/reading-group/useG
 import { useGroupStore } from '../../store/reading-group/groupStore';
 import { useAuth } from '../../store/auth/AuthContext';
 import MemberProgressBar from '../../components/reading-group/MemberProgressBar';
+import NavBar from '../../components/common/NavBar';
 import { COLORS } from '../../constants/theme';
 
 type Props = NativeStackScreenProps<any, 'GroupHome'>;
@@ -70,6 +71,7 @@ export default function GroupHomeScreen({ navigation, route }: Props) {
 
   return (
     <View style={styles.container}>
+      <NavBar title="모임 홈" onBack={() => navigation.goBack()} />
       {/* 모임 헤더 */}
       <View style={styles.header}>
         <View style={{ flexDirection: 'row', gap: 16 }}>

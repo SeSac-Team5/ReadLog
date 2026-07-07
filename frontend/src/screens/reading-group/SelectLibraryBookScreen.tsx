@@ -1,11 +1,13 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { useLibrary } from '../../store/reading-plan/libraryStore';
 import type { UserLibraryItem } from '../../types/reading-plan/book';
 import { COLORS } from '../../constants/theme';
+import NavBar from '../../components/common/NavBar';
 
 export type SelectedLibraryBook = {
   book_id: number;
@@ -21,9 +23,13 @@ export default function SelectLibraryBookScreen({ route, navigation }: Props) {
   const { items, loadLibrary } = useLibrary();
   const [query, setQuery] = useState('');
 
-  useEffect(() => {
-    loadLibrary();
-  }, [loadLibrary]);
+  // 다른 화면에서 서재에 책을 추가/삭제한 뒤 다시 열어도 최신 목록이 보이도록
+  // 마운트 시뿐 아니라 화면에 포커스될 때마다 다시 불러온다.
+  useFocusEffect(
+    useCallback(() => {
+      loadLibrary();
+    }, [loadLibrary])
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -46,6 +52,7 @@ export default function SelectLibraryBookScreen({ route, navigation }: Props) {
 
   return (
     <View style={styles.container}>
+      <NavBar title="진행 도서 선택" onBack={() => navigation.goBack()} />
       <View style={styles.searchBar}>
         <TextInput
           style={styles.searchInput}
