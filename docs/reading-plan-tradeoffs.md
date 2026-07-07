@@ -275,3 +275,14 @@ C의 `origin/Ryu`가 우리 `df83d8e`(진행 도서 선택 기능) 지점에서 
 - **가져온 것**: 백엔드에 `GET /library/progress-activity` 신규 엔드포인트(`list_progress_activity` 서비스 함수) — 사용자의 모든 서재 항목을 통틀어 진도 코멘트(memo)를 남긴 날짜 목록을 반환. 프론트 홈 화면의 스트릭 계산이 이제 (1) 개인 진도 코멘트 날짜 + (2) 모임 댓글 날짜를 합쳐서 계산하도록 변경 — 모임이 하나도 없어도 개인 코멘트만으로 스트릭이 인정된다.
 - **충돌 및 해결**: `progress_service.py`의 `list_library_comments`에서 또 같은 패턴의 충돌이 났다 — A의 로컬 사본이 여전히 이 함수를 `reviews` 테이블 기반으로 되돌리려는 옛 버전을 들고 있었음(위 첫 yseSUM 병합에서 이미 반려한 그 변경). 이번엔 3-way 병합이 실제 conflict marker를 띄워서(같은 함수를 우리도 그 뒤에 계속 수정했기 때문) 자동으로 조용히 덮이진 않았다. HEAD의 진도 코멘트 기반 버전을 유지하고, 새로 추가된 `list_progress_activity` 함수만 그 아래에 이어붙였다.
 - 검증: tsc 클린(테스트 파일의 기존 `@types/jest` 누락 에러 제외), 백엔드 부팅 정상(routes 57→58), Metro 번들 정상.
+
+### 연속독서가 진도 입력해도 안 올라가는 버그 — 원인은 VM 시계가 아니라 타임존 태그 누락
+
+사용자가 진도를 입력해도 스트릭이 0으로 나온다고 리포트. **처음엔 MySQL 서버(VM, `192.168.56.2`)의 시스템 시계가 실제보다 하루 느린 것으로 오진단하고 VM 시계를 맞추라고 안내했는데, 이건 틀린 진단이었다.** VM의 `date -s`가 계속 안 먹힌 것도 오히려 NTP가 정상 시각을 지키려고 되돌린 정상 동작이었을 가능성이 높다.
+
+**진짜 원인**: `backend/app/modules/reading_plan/schemas/progress.py`의 `ProgressActivityEntry`/`ProgressLogEntry`/`LibraryCommentEntry` 등 `recorded_at: datetime` 필드가 MySQL `TIMESTAMP`(UTC로 채워짐, `server_default=func.now()`)에서 온 **naive datetime**(tzinfo 없음)을 그대로 JSON으로 직렬화해서 `"2026-07-06T23:59:56"`처럼 `Z`/오프셋 없이 내려주고 있었다. 프론트의 `new Date(...)`는 오프셋 없는 문자열을 **기기 로컬 타임존(KST)**으로 해석하므로, UTC 23:59(=KST 다음날 08:59)가 "그 전날 23:59 KST"로 잘못 해석되어 날짜가 하루 밀렸다 — 그래서 홈 화면 스트릭 계산(`cursor`=기기 로컬 오늘)과 절대 안 맞았던 것.
+
+`reading_group` 모듈은 이미 같은 문제를 막는 `ensure_utc` 필드 검증기(`schemas/group.py`의 `ProgressResponse.created_at`)가 있었는데, `reading_plan` 모듈엔 없었다. **개별 필드마다 검증기를 반복하는 대신 `schemas/base.py`의 `CamelModel`에 `field_validator("*", mode="before")`로 한 번에 고쳤다** — naive datetime이면 무조건 UTC로 태그한다. 이렇게 하면 `progress.py`뿐 아니라 `library.py`(`UserLibraryItem.updated_at`), `review.py`, `sns.py`의 datetime 필드도 한 번에 같은 버그를 예방한다.
+
+- 실제 DB(user_id=2)에서 `list_progress_activity` 직접 호출해서 수정 전/후 JSON을 비교 확인: 수정 후 `"recordedAt":"2026-07-06T23:56:26Z"`처럼 `Z`가 붙고, Node에서 `new Date(...).toDateString()`으로 KST 변환 결과가 기기의 오늘 날짜와 일치하는 것까지 확인.
+- VM 시계는 원래 문제가 아니었으므로 사용자에게 되돌려 맞추지 말라고 정정 안내함.
