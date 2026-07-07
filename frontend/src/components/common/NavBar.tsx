@@ -9,24 +9,12 @@ interface Props {
   rightAction?: React.ReactNode;
 }
 
-export const NAV_BAR_HEIGHT = 52;
-const BAR_HEIGHT = NAV_BAR_HEIGHT;
-
-function useSafeTop(): number {
-  const { top } = useSafeAreaInsets();
-  // Android는 inset을 0으로 보고하는 기기가 있으므로 최솟값 보정
-  return Platform.OS === 'android' ? Math.max(top, 24) : top;
-}
-
-// 네이티브 헤더를 headerShown:false로 숨기고 이 NavBar를 대신 쓰는 화면에서,
-// KeyboardAvoidingView의 keyboardVerticalOffset처럼 실제 렌더된 NavBar 높이가
-// 필요할 때 쓴다 (예: CommentsScreen).
-export function useNavBarHeight(): number {
-  return NAV_BAR_HEIGHT + useSafeTop();
-}
+const BAR_HEIGHT = 52;
 
 export default function NavBar({ title, onBack, rightAction }: Props) {
-  const safeTop = useSafeTop();
+  const { top } = useSafeAreaInsets();
+  // Android는 inset을 0으로 보고하는 기기가 있으므로 최솟값 보정
+  const safeTop = Platform.OS === 'android' ? Math.max(top, 24) : top;
 
   return (
     <View style={[styles.bar, { paddingTop: safeTop, height: BAR_HEIGHT + safeTop }]}>

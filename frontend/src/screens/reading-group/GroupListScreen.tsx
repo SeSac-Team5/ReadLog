@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   FlatList, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
@@ -12,15 +12,28 @@ import type { ReadingGroup } from '../../types/reading-group';
 type Props = NativeStackScreenProps<any, 'GroupList'>;
 
 export default function GroupListScreen({ navigation }: Props) {
-  const { groups, loading, refresh } = useMyGroups();
+  const { groups, refresh } = useMyGroups();
+  // FlatList의 pull-to-refresh 스피너는 사용자가 직접 당겼을 때만 보여줘야 한다.
+  // 훅의 loading을 그대로 바인딩하면, 아래 useFocusEffect의 백그라운드
+  // 재조회 때도 스피너가 뜨면서 리스트 전체가 아래로 밀리는 버그가 생긴다.
+  const [pullRefreshing, setPullRefreshing] = useState(false);
 
   // 모임을 만들거나 참가하거나 탈퇴/삭제하고 이 목록으로 돌아왔을 때
-  // 항상 최신 상태가 보이도록 화면에 포커스될 때마다 다시 조회한다.
+  // 항상 최신 상태가 보이도록 화면에 포커스될 때마다 조용히 다시 조회한다.
   useFocusEffect(
     useCallback(() => {
       refresh();
     }, [refresh])
   );
+
+  async function handlePullRefresh() {
+    setPullRefreshing(true);
+    try {
+      await refresh();
+    } finally {
+      setPullRefreshing(false);
+    }
+  }
 
   function renderItem({ item }: { item: ReadingGroup }) {
     const daysLeft = item.end_date
@@ -73,8 +86,8 @@ export default function GroupListScreen({ navigation }: Props) {
         keyExtractor={item => String(item.id)}
         renderItem={renderItem}
         contentContainerStyle={styles.list}
-        refreshing={loading}
-        onRefresh={refresh}
+        refreshing={pullRefreshing}
+        onRefresh={handlePullRefresh}
         ListFooterComponent={
           <TouchableOpacity
             style={styles.joinBtn}

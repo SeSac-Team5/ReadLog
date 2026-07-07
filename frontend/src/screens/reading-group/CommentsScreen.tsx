@@ -8,7 +8,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useGroupComments } from '../../hooks/reading-group/useGroups';
 import SpoilerComment from '../../components/reading-group/SpoilerComment';
-import NavBar, { useNavBarHeight } from '../../components/common/NavBar';
+import NavBar from '../../components/common/NavBar';
 import { useAuth } from '../../store/auth/AuthContext';
 import { COLORS } from '../../constants/theme';
 import type { GroupComment } from '../../types/reading-group';
@@ -25,9 +25,6 @@ export default function CommentsScreen({ navigation, route }: Props) {
   const [sending, setSending] = useState(false);
 
   const insets = useSafeAreaInsets();
-  // 네이티브 헤더를 headerShown:false로 숨기고 NavBar를 대신 쓰므로,
-  // useHeaderHeight() 대신 NavBar의 실제 렌더 높이를 오프셋으로 쓴다.
-  const navBarHeight = useNavBarHeight();
 
   async function handleSend() {
     if (!content.trim()) return;
@@ -48,7 +45,13 @@ export default function CommentsScreen({ navigation, route }: Props) {
       <KeyboardAvoidingView
         style={styles.container}
         behavior="padding"
-        keyboardVerticalOffset={Platform.OS === 'android' ? insets.bottom : navBarHeight}
+        // 이 라이브러리는 KeyboardAvoidingView 자신의 위치를 onLayout(부모 기준
+        // 상대좌표)으로 직접 측정한다. NavBar가 이제 같은 트리의 형제 요소라
+        // 그 상대좌표에 NavBar 높이가 이미 포함돼 있으므로, 여기서 오프셋을
+        // 추가로 더하면 두 번 겹쳐 적용돼 입력창이 키보드 위로 너무 많이
+        // 밀려 올라간다(이전엔 네이티브 헤더가 트리 밖에 있어 0으로 측정됐던
+        // 것과 다름). iOS는 0으로 두고 라이브러리의 자체 측정에 맡긴다.
+        keyboardVerticalOffset={Platform.OS === 'android' ? insets.bottom : 0}
       >
         <FlatList
           style={styles.list_container}
